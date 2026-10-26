@@ -1,0 +1,48 @@
+{
+  "label": "burst",
+  "run_file": "run-20261025T125040Z.jsonl",
+  "config": {
+    "speed": 60.0,
+    "start": "07:45",
+    "duration_hours": 2.5,
+    "seed": 42
+  },
+  "real_duration_s": 150.4,
+  "sent": 6083,
+  "succeeded_first_try": 3161,
+  "succeeded_after_retry": 725,
+  "failed_downstream": 2197,
+  "dlq_reasons": {
+    "retries_exhausted": 58,
+    "circuit_open": 2139
+  },
+  "dlq_count": 2197,
+  "dlq_rate_pct": 36.12,
+  "latency_ms": {
+    "p50": 285.0,
+    "p95": 1015.0,
+    "p99": 1818.0
+  },
+  "breaker_transitions": {
+    "closed->open": 2.0,
+    "half_open->closed": 2.0,
+    "half_open->open": 2.0,
+    "open->half_open": 4.0
+  },
+  "breaker_opens": 4.0,
+  "http_errors": 0,
+  "unaccounted": 0,
+  "unaccounted_sample": [],
+  "service_stats_after": {
+    "received": 6083,
+    "succeeded_first_try": 3161,
+    "succeeded_after_retry": 725,
+    "failed_downstream": 2197,
+    "dlq_pending": 2197,
+    "dlq_replayed": 0,
+    "dlq_replay_failed": 0,
+    "dlq_total": 2197,
+    "breaker_state": "closed",
+    "in_flight": 0.0
+  }
+}

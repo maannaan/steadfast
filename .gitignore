@@ -1,0 +1,33 @@
+# Secrets and local config
+.env
+.env.*
+!.env.example
+
+# Challenge brief is Predixion's document, not ours to publish
+*.pdf
+
+# Runtime data
+data/
+results/*.jsonl
+results/*.meta.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Terraform (Round 2)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/

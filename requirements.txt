@@ -1,0 +1,8 @@
+fastapi==0.162.0
+uvicorn==0.54.0
+# uvicorn picks these up automatically: a faster event loop and HTTP parser.
+uvloop==0.23.0
+httptools==0.9.0
+httpx==0.28.1
+pydantic==2.14.1
+pydantic-settings==2.16.1

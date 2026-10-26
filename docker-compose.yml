@@ -1,0 +1,66 @@
+# Local Round 1 stack: flaky mock pipeline, resilient call service, load generator.
+# Values come from your shell or .env (see .env.example), falling back to the defaults here.
+name: steadfast
+
+services:
+  mock:
+    build:
+      context: .
+      dockerfile: mock/Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      FAILURE_RATE: ${FAILURE_RATE:-0.2}
+      LATENCY_MU: ${LATENCY_MU:-5.7}
+      LATENCY_SIGMA: ${LATENCY_SIGMA:-0.66}
+      SEED: ${SEED:-}
+      FAILURE_MODE: ${FAILURE_MODE:-independent}
+      BURST_ON_S: ${BURST_ON_S:-15}
+      BURST_OFF_S: ${BURST_OFF_S:-45}
+
+  service:
+    build:
+      context: .
+      dockerfile: service/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      PIPELINE_BACKEND: ${PIPELINE_BACKEND:-mock}
+      PIPELINE_URL: http://mock:8081
+      HTTP_MAX_CONNECTIONS: ${HTTP_MAX_CONNECTIONS:-50}
+      DB_PATH: /app/data/steadfast.db
+      DB_SYNCHRONOUS: ${DB_SYNCHRONOUS:-FULL}
+      MAX_ATTEMPTS: ${MAX_ATTEMPTS:-3}
+      BACKOFF_BASE_S: ${BACKOFF_BASE_S:-0.2}
+      BACKOFF_CAP_S: ${BACKOFF_CAP_S:-2.0}
+      ATTEMPT_TIMEOUT_S: ${ATTEMPT_TIMEOUT_S:-2.5}
+      CALL_DEADLINE_S: ${CALL_DEADLINE_S:-8.0}
+      BREAKER_WINDOW: ${BREAKER_WINDOW:-100}
+      BREAKER_MIN_CALLS: ${BREAKER_MIN_CALLS:-100}
+      BREAKER_FAILURE_THRESHOLD: ${BREAKER_FAILURE_THRESHOLD:-0.5}
+      BREAKER_OPEN_S: ${BREAKER_OPEN_S:-10}
+      BREAKER_HALF_OPEN_MAX: ${BREAKER_HALF_OPEN_MAX:-3}
+      TURNS_PER_CALL: ${TURNS_PER_CALL:-1}
+      TURN_GAP_S: ${TURN_GAP_S:-0}
+      OUTCOME_SEED: ${OUTCOME_SEED:-}
+      SHUTDOWN_DRAIN_S: ${SHUTDOWN_DRAIN_S:-15}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      mock:
+        condition: service_healthy
+    stop_grace_period: 25s
+
+  loadgen:
+    profiles: ["loadgen"]
+    build:
+      context: .
+      dockerfile: loadgen/Dockerfile
+    environment:
+      STEADFAST_URL: http://service:8080
+    volumes:
+      - ./results:/app/results
+    depends_on:
+      service:
+        condition: service_healthy
