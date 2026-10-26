@@ -7,7 +7,7 @@ from service.replay import replay_dead_letters
 from service.resilience.breaker import BreakerState, CircuitBreaker
 from service.resilience.executor import CallExecutor
 from service.resilience.retry import RetryPolicy
-from service.store.call_log import CallLog
+from service.store.call_log import SqliteCallLog
 from service.store.db import Database
 from service.store.dlq import SqliteDLQ
 from tests.conftest import OK, FakeClock, FakePipeline, make_event, r503
@@ -48,7 +48,7 @@ def build_executor(db: Database, pipeline: FakePipeline, clock: FakeClock) -> Ca
     return CallExecutor(
         pipeline=pipeline,
         breaker=CircuitBreaker(clock=clock),
-        call_log=CallLog(db),
+        call_log=SqliteCallLog(db),
         dlq=SqliteDLQ(db),
         metrics=Metrics(),
         policy=RetryPolicy(),
@@ -72,7 +72,7 @@ async def test_replay_success_marks_replayed_and_updates_call_log(
         executor, dlq, Metrics(), event_ids=["evt-1"], sleep=clock.sleep
     )
     entry = await dlq.get("evt-1")
-    stored = await CallLog(db).get("evt-1")
+    stored = await SqliteCallLog(db).get("evt-1")
 
     assert summary.replayed == 1 and summary.failed == 0
     assert entry is not None and entry.status == "replayed" and entry.replay_count == 1
@@ -161,7 +161,7 @@ def tripped_executor(db: Database, pipeline: FakePipeline, clock: FakeClock) -> 
     return CallExecutor(
         pipeline=pipeline,
         breaker=breaker,
-        call_log=CallLog(db),
+        call_log=SqliteCallLog(db),
         dlq=SqliteDLQ(db),
         metrics=Metrics(),
         policy=RetryPolicy(),

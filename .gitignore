@@ -8,6 +8,8 @@
 
 # Runtime data
 data/
+# Model weights cache (scripts/upload_models.sh); weights live in S3, never in git
+model-weights/
 results/*.jsonl
 results/*.meta.json
 
@@ -26,6 +28,7 @@ __pycache__/
 *.tfvars
 !*.tfvars.example
 crash.log
+infra/*.pem
 
 # OS / editors
 .DS_Store

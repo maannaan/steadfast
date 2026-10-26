@@ -3,13 +3,35 @@
 Rows are upserted by event_id, so processing the same event twice (a client retrying a
 POST, or a DLQ replay that turns a failure into a success) updates one row instead of
 creating duplicates.
+
+The executor and API depend only on CallLogBackend. Locally a single process owns a SQLite
+file; on AWS several tasks sit behind a load balancer, so they share a DynamoDB table
+(store/dynamo_call_log.py) and any task can answer "was this call recorded?".
 """
 
 import sqlite3
 from datetime import datetime
+from typing import Protocol
 
 from service.models import CallResult, Outcome
 from service.store.db import Database
+
+
+class CallLogBackend(Protocol):
+    async def upsert(
+        self, result: CallResult, received_at: datetime, finished_at: datetime
+    ) -> None: ...
+
+    async def get(self, event_id: str) -> CallResult | None: ...
+
+    async def existing_ids(self, event_ids: list[str]) -> set[str]: ...
+
+    async def stats(self) -> dict[str, int]: ...
+
+    async def healthy(self) -> bool:
+        """Can we read and write the log right now? Backs the /ready probe."""
+        ...
+
 
 UPSERT = """
 INSERT INTO call_log (event_id, campaign_id, borrower_bucket, product_type, event_timestamp,
@@ -29,9 +51,12 @@ ON CONFLICT (event_id) DO UPDATE SET
 """
 
 
-class CallLog:
+class SqliteCallLog:
     def __init__(self, db: Database) -> None:
         self._db = db
+
+    async def healthy(self) -> bool:
+        return await self._db.is_writable()
 
     async def upsert(
         self, result: CallResult, received_at: datetime, finished_at: datetime

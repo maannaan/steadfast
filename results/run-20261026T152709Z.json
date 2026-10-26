@@ -1,0 +1,43 @@
+{
+  "label": "aws-outage",
+  "run_file": "run-20261026T152709Z.jsonl",
+  "config": {
+    "speed": 6.0,
+    "start": "08:30",
+    "duration_hours": 0.1,
+    "seed": 42
+  },
+  "real_duration_s": 59.8,
+  "sent": 312,
+  "succeeded_first_try": 0,
+  "succeeded_after_retry": 0,
+  "failed_downstream": 312,
+  "dlq_reasons": {
+    "retries_exhausted": 69,
+    "circuit_open": 243
+  },
+  "dlq_count": 312,
+  "dlq_rate_pct": 100.0,
+  "latency_ms": {
+    "p50": 124.0,
+    "p95": 585.0,
+    "p99": 696.0
+  },
+  "breaker_transitions": null,
+  "breaker_opens": null,
+  "http_errors": 0,
+  "unaccounted": 0,
+  "unaccounted_sample": [],
+  "service_stats_after": {
+    "received": 1524,
+    "succeeded_first_try": 333,
+    "succeeded_after_retry": 879,
+    "failed_downstream": 312,
+    "dlq_pending": 312,
+    "dlq_replayed": 504,
+    "dlq_replay_failed": 0,
+    "dlq_total": 816,
+    "breaker_state": "open",
+    "in_flight": 0.0
+  }
+}

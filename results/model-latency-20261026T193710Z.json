@@ -1,0 +1,192 @@
+{
+  "summary": {
+    "calls": 20,
+    "succeeded": 20,
+    "outcomes": {
+      "ptp_taken": 2,
+      "connected": 15,
+      "no_answer": 3
+    },
+    "retries_total": 5,
+    "client_wall_ms_succeeded": {
+      "p50": 3848.5,
+      "p99": 6785.39,
+      "max": 6903
+    },
+    "model_turn_ms": {
+      "turns": 20.0,
+      "attempt_p50": 3679.0,
+      "attempt_p99": 5928.0,
+      "queue_p50": 0.0,
+      "queue_p99": 0.0,
+      "stt_p50": 1565.0,
+      "stt_p99": 1769.0,
+      "llm_p50": 1708.0,
+      "llm_p99": 3809.0,
+      "tts_p50": 249.0,
+      "tts_p99": 711.0
+    }
+  },
+  "calls": [
+    {
+      "event_id": "latency-20261026T193515-000",
+      "http": 200,
+      "wall_ms": 4539,
+      "outcome": "connected",
+      "status": "succeeded",
+      "retry_count": 0
+    },
+    {
+      "event_id": "latency-20261026T193515-001",
+      "http": 200,
+      "wall_ms": 3315,
+      "outcome": "no_answer",
+      "status": "succeeded",
+      "retry_count": 0
+    },
+    {
+      "event_id": "latency-20261026T193515-002",
+      "http": 200,
+      "wall_ms": 4635,
+      "outcome": "connected",
+      "status": "succeeded",
+      "retry_count": 0
+    },
+    {
+      "event_id": "latency-20261026T193515-003",
+      "http": 200,
+      "wall_ms": 4741,
+      "outcome": "ptp_taken",
+      "status": "succeeded",
+      "retry_count": 0
+    },
+    {
+      "event_id": "latency-20261026T193515-004",
+      "http": 200,
+      "wall_ms": 6903,
+      "outcome": "connected",
+      "status": "succeeded",
+      "retry_count": 2
+    },
+    {
+      "event_id": "latency-20261026T193515-005",
+      "http": 200,
+      "wall_ms": 2968,
+      "outcome": "connected",
+      "status": "succeeded",
+      "retry_count": 0
+    },
+    {
+      "event_id": "latency-20261026T193515-006",
+      "http": 200,
+      "wall_ms": 2659,
+      "outcome": "connected",
+      "status": "succeeded",
+      "retry_count": 0
+    },
+    {
+      "event_id": "latency-20261026T193515-007",
+      "http": 200,
+      "wall_ms": 2819,
+      "outcome": "connected",
+      "status": "succeeded",
+      "retry_count": 0
+    },
+    {
+      "event_id": "latency-20261026T193515-008",
+      "http": 200,
+      "wall_ms": 3943,
+      "outcome": "connected",
+      "status": "succeeded",
+      "retry_count": 1
+    },
+    {
+      "event_id": "latency-20261026T193515-009",
+      "http": 200,
+      "wall_ms": 2722,
+      "outcome": "ptp_taken",
+      "status": "succeeded",
+      "retry_count": 0
+    },
+    {
+      "event_id": "latency-20261026T193515-010",
+      "http": 200,
+      "wall_ms": 6023,
+      "outcome": "no_answer",
+      "status": "succeeded",
+      "retry_count": 0
+    },
+    {
+      "event_id": "latency-20261026T193515-011",
+      "http": 200,
+      "wall_ms": 4265,
+      "outcome": "no_answer",
+      "status": "succeeded",
+      "retry_count": 0
+    },
+    {
+      "event_id": "latency-20261026T193515-012",
+      "http": 200,
+      "wall_ms": 3078,
+      "outcome": "connected",
+      "status": "succeeded",
+      "retry_count": 0
+    },
+    {
+      "event_id": "latency-20261026T193515-013",
+      "http": 200,
+      "wall_ms": 2806,
+      "outcome": "connected",
+      "status": "succeeded",
+      "retry_count": 0
+    },
+    {
+      "event_id": "latency-20261026T193515-014",
+      "http": 200,
+      "wall_ms": 5243,
+      "outcome": "connected",
+      "status": "succeeded",
+      "retry_count": 0
+    },
+    {
+      "event_id": "latency-20261026T193515-015",
+      "http": 200,
+      "wall_ms": 3479,
+      "outcome": "connected",
+      "status": "succeeded",
+      "retry_count": 0
+    },
+    {
+      "event_id": "latency-20261026T193515-016",
+      "http": 200,
+      "wall_ms": 3999,
+      "outcome": "connected",
+      "status": "succeeded",
+      "retry_count": 1
+    },
+    {
+      "event_id": "latency-20261026T193515-017",
+      "http": 200,
+      "wall_ms": 3754,
+      "outcome": "connected",
+      "status": "succeeded",
+      "retry_count": 0
+    },
+    {
+      "event_id": "latency-20261026T193515-018",
+      "http": 200,
+      "wall_ms": 6284,
+      "outcome": "connected",
+      "status": "succeeded",
+      "retry_count": 0
+    },
+    {
+      "event_id": "latency-20261026T193515-019",
+      "http": 200,
+      "wall_ms": 3038,
+      "outcome": "connected",
+      "status": "succeeded",
+      "retry_count": 1
+    }
+  ]
+}

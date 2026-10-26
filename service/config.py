@@ -7,7 +7,7 @@ that differs between environments is ever hard-coded. `.env.example` documents e
 
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -22,9 +22,18 @@ class Settings(BaseSettings):
     # the resulting attempt timeouts trip the breaker. Measured: 200 opened it, 50 did not.
     http_max_connections: int = Field(default=50, ge=1)
 
+    # Where calls and dead letters are recorded. sqlite: one local file (single process).
+    # dynamodb / sqs: shared by every task behind a load balancer (Round 2, AWS).
+    call_log_backend: Literal["sqlite", "dynamodb"] = "sqlite"
+    dlq_backend: Literal["sqlite", "sqs"] = "sqlite"
     db_path: str = "./data/steadfast.db"
     # FULL fsyncs every commit: a call is only acknowledged once it is on disk.
     db_synchronous: Literal["FULL", "NORMAL"] = "FULL"
+    # AWS backends. Credentials come from the ECS task role, never from config.
+    aws_region: str | None = None
+    call_log_table: str = "steadfast-call-log"
+    dead_letters_table: str = "steadfast-dead-letters"
+    sqs_queue_url: str | None = None
 
     # Retry policy. 3 attempts at a 20% independent failure rate leaves 0.2^3 = 0.8% of
     # calls for the DLQ; the deadline bounds how long a borrower can be left waiting.
@@ -53,3 +62,20 @@ class Settings(BaseSettings):
     # How long shutdown waits for in-flight calls to finish and be persisted.
     shutdown_drain_s: float = Field(default=15.0, ge=0)
     log_level: str = "INFO"
+
+    # prometheus: /metrics only (local). emf: also CloudWatch metrics via log lines (AWS).
+    metrics_backend: Literal["prometheus", "emf"] = "prometheus"
+    service_name: str = "steadfast-orchestrator"
+    gauge_interval_s: float = Field(default=10.0, gt=0)
+
+    # Replay worker (python -m service.replay_worker): replays started per second, across
+    # `replay_concurrency` receive loops (each holds up to 10 calls in flight).
+    replay_rate_per_s: float = Field(default=5.0, gt=0)
+    replay_concurrency: int = Field(default=8, ge=1, le=32)
+
+    @model_validator(mode="after")
+    def sqs_needs_queue_url(self) -> "Settings":
+        # Fail at startup, not on the first failed call, when the DLQ has nowhere to go.
+        if self.dlq_backend == "sqs" and not self.sqs_queue_url:
+            raise ValueError("DLQ_BACKEND=sqs requires SQS_QUEUE_URL")
+        return self

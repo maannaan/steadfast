@@ -12,5 +12,5 @@ def build_pipeline(settings: Settings, client: httpx.AsyncClient) -> Pipeline:
     if settings.pipeline_backend == "mock":
         return HttpMockPipeline(client, settings.pipeline_url, settings.attempt_timeout_s)
     if settings.pipeline_backend == "open_weight":
-        return OpenWeightPipeline()
+        return OpenWeightPipeline(client, settings.pipeline_url, settings.attempt_timeout_s)
     raise ValueError(f"unknown PIPELINE_BACKEND: {settings.pipeline_backend}")

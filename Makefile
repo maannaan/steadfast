@@ -1,4 +1,4 @@
-# Steadfast - Round 1 local stack. Run `make help` for targets.
+# Steadfast - local stack (Round 1) and AWS deployment (Round 2). Run `make help` for targets.
 
 SPEED ?= 60
 START ?= 00:00
@@ -14,7 +14,8 @@ VENV := .venv
 PY := $(VENV)/bin/python
 
 .PHONY: help venv up down logs test lint load load-window burst mock-normal kill-mock \
-	start-mock outage dlq-list dlq-replay dlq-stats report check-latency clean
+	start-mock outage dlq-list dlq-replay dlq-stats report check-latency clean \
+	aws-build aws-deploy aws-smoke aws-load aws-load-window aws-replay aws-results aws-destroy
 
 help: ## List targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -79,6 +80,42 @@ report: ## Summarise the latest run (exit 1 if any call is unaccounted)
 
 check-latency: ## Lognormal percentiles for sigma 0.35 / 0.60 / 0.66
 	python3 scripts/check_latency.py
+
+# ---------- AWS (Round 2). Needs AWS credentials (e.g. AWS_PROFILE) and terraform. ----------
+
+AWS_ENV = eval "$$(./scripts/aws_env.sh)" &&
+AWS_SPEED ?= 6
+AWS_START ?= 07:45
+AWS_HOURS ?= 0.5
+AWS_CONCURRENCY ?= 300
+
+aws-build: ## Build and push orchestrator + mock images to ECR (tag = git SHA)
+	./scripts/build_push.sh
+
+aws-deploy: ## Apply Terraform and deploy (asks before each apply)
+	./scripts/deploy.sh
+
+aws-smoke: ## Health, readiness and one recorded call through the ALB
+	./scripts/aws_smoke.sh
+
+aws-load: ## Loadgen from this machine via the public URL (AWS_SPEED/START/HOURS), then report
+	$(AWS_ENV) $(PY) -m loadgen.generate --url "$$STEADFAST_URL" --speed $(AWS_SPEED) \
+		--start $(AWS_START) --duration-hours $(AWS_HOURS) --seed $(LOAD_SEED) \
+		--concurrency $(AWS_CONCURRENCY) --no-prom-metrics
+	$(AWS_ENV) $(PY) -m loadgen.report --url "$$STEADFAST_URL" --label $(LABEL) \
+		--no-prom-metrics
+
+aws-load-window: ## Autoscaling demo: 07:45-10:15 at speed 6 (25 min), report, wait for scale-in, export
+	./scripts/load_aws.sh
+
+aws-replay: ## Drain the SQS DLQ: run the replay worker until the queue is empty
+	./scripts/replay_aws.sh
+
+aws-results: ## Export the last MINUTES (default 60) of CloudWatch metrics to results/
+	./scripts/aws_results.sh $(LABEL)
+
+aws-destroy: ## Destroy all AWS resources (end of every session)
+	./scripts/aws_destroy.sh
 
 clean: ## Stop everything and delete local data and raw run files
 	$(COMPOSE) --profile loadgen down --remove-orphans

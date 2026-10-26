@@ -1,0 +1,11 @@
+# Optional: scripts/deploy.sh sets image_tag for you.
+# To run terraform by hand, copy to terraform.tfvars (gitignored) and edit.
+
+image_tag = "abc1234" # git short SHA pushed by scripts/build_push.sh
+
+# direct_access_cidrs        = ["203.0.113.7/32"] # bypass CloudFront (still needs the key)
+# orchestrator_desired_count = 2
+# turns_per_call             = 6
+# turn_gap_s                 = 5
+# mock_failure_mode          = "independent" # or "burst"
+# activate_cost_allocation_tag = true        # once the Project tag shows up in billing

@@ -1,0 +1,42 @@
+{
+  "label": "aws-phase-a",
+  "run_file": "run-20261026T120822Z.jsonl",
+  "config": {
+    "speed": 6.0,
+    "start": "07:45",
+    "duration_hours": 0.5,
+    "seed": 42
+  },
+  "real_duration_s": 330.0,
+  "sent": 605,
+  "succeeded_first_try": 164,
+  "succeeded_after_retry": 419,
+  "failed_downstream": 22,
+  "dlq_reasons": {
+    "retries_exhausted": 22
+  },
+  "dlq_count": 22,
+  "dlq_rate_pct": 3.64,
+  "latency_ms": {
+    "p50": 27405.0,
+    "p95": 28822.0,
+    "p99": 29546.0
+  },
+  "breaker_transitions": null,
+  "breaker_opens": null,
+  "http_errors": 0,
+  "unaccounted": 0,
+  "unaccounted_sample": [],
+  "service_stats_after": {
+    "received": 606,
+    "succeeded_first_try": 164,
+    "succeeded_after_retry": 420,
+    "failed_downstream": 22,
+    "dlq_pending": 22,
+    "dlq_replayed": 0,
+    "dlq_replay_failed": 0,
+    "dlq_total": 22,
+    "breaker_state": "closed",
+    "in_flight": 0.0
+  }
+}

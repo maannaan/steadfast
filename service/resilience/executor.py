@@ -22,6 +22,7 @@ from datetime import UTC, datetime
 
 from service.logging_setup import log_event
 from service.metrics import Metrics
+from service.metrics_emf import EmfEmitter
 from service.models import CallEvent, CallResult, Outcome
 from service.pipeline.base import NonRetryableError, Pipeline
 from service.resilience.breaker import BreakerState, CircuitBreaker
@@ -32,7 +33,7 @@ from service.resilience.retry import (
     Sleep,
     call_with_retry,
 )
-from service.store.call_log import CallLog
+from service.store.call_log import CallLogBackend
 from service.store.dlq import DLQBackend
 
 log = logging.getLogger("steadfast.calls")
@@ -78,13 +79,14 @@ class CallExecutor:
         *,
         pipeline: Pipeline,
         breaker: CircuitBreaker,
-        call_log: CallLog,
+        call_log: CallLogBackend,
         dlq: DLQBackend,
         metrics: Metrics,
         policy: RetryPolicy,
         turns_per_call: int = 1,
         turn_gap_s: float = 0.0,
         outcome_seed: int | None = None,
+        emf: EmfEmitter | None = None,
         sleep: Sleep = asyncio.sleep,
         clock: Clock = time.monotonic,
         rng: random.Random | None = None,
@@ -98,6 +100,7 @@ class CallExecutor:
         self._turns = turns_per_call
         self._turn_gap_s = turn_gap_s
         self._outcome_seed = outcome_seed
+        self._emf = emf
         self._sleep = sleep
         self._clock = clock
         self._rng = rng or random.Random()
@@ -156,6 +159,12 @@ class CallExecutor:
         start = self._clock()
         retries = 0
         failure: tuple[str, int, str | None] | None = None  # (dlq reason, attempts, last error)
+        errors = 0
+
+        def on_attempt(error: Exception | None) -> None:
+            nonlocal errors
+            self._on_attempt(error)
+            errors += error is not None
 
         try:
             for turn in range(self._turns):
@@ -168,7 +177,7 @@ class CallExecutor:
                     sleep=self._sleep,
                     clock=self._clock,
                     rng=self._rng,
-                    on_attempt=self._on_attempt,
+                    on_attempt=on_attempt,
                 )
                 retries += used
         except RetryGiveUpError as exc:
@@ -185,7 +194,7 @@ class CallExecutor:
         latency_ms = round((self._clock() - start) * 1000)
         result = self._build_result(event, retries, latency_ms, failure)
         await self._persist(event, result, failure, received_at)
-        self._record(result, replay)
+        self._record(result, replay, errors)
         return result
 
     def _build_result(
@@ -244,13 +253,23 @@ class CallExecutor:
         if error is not None:
             self._metrics.downstream_errors_total.inc(kind=error_kind(error))
 
-    def _record(self, result: CallResult, replay: bool) -> None:
+    def _record(self, result: CallResult, replay: bool, downstream_errors: int) -> None:
         m = self._metrics
         m.calls_total.inc(outcome=result.outcome.value)
         m.retries_total.inc(result.retry_count)
         m.latency_ms.observe(result.latency_ms)
         if result.dlq_reason:
             m.dlq_enqueued_total.inc(reason=result.dlq_reason.split(":", 1)[0])
+        emf = (
+            self._emf.call_fields(
+                retries=result.retry_count,
+                downstream_errors=downstream_errors,
+                dlq=result.dlq_reason is not None,
+                latency_ms=result.latency_ms,
+            )
+            if self._emf
+            else {}
+        )
         log_event(
             log,
             "call",
@@ -261,4 +280,5 @@ class CallExecutor:
             breaker_state=self._breaker.state.value,
             replay=replay,
             dlq_reason=result.dlq_reason,
+            **emf,
         )

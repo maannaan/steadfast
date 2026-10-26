@@ -3,6 +3,7 @@
 .env
 .env.*
 data
+model-weights
 results
 tests
 infra

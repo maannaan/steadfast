@@ -23,7 +23,16 @@ DEFAULT_URL = "http://localhost:8080"
 
 def _client(url: str) -> httpx.Client:
     # Replays are deliberately slow (rate-limited), so no read timeout.
-    return httpx.Client(base_url=url, timeout=httpx.Timeout(10.0, read=None))
+    # On AWS the load balancer requires the access key and serves a self-signed certificate
+    # that we trust explicitly (STEADFAST_CA_BUNDLE); locally neither is set.
+    key = os.environ.get("STEADFAST_API_KEY")
+    headers = {"x-steadfast-key": key} if key else {}
+    return httpx.Client(
+        base_url=url,
+        timeout=httpx.Timeout(10.0, read=None),
+        headers=headers,
+        verify=os.environ.get("STEADFAST_CA_BUNDLE") or True,
+    )
 
 
 def _get(url: str, path: str, **params: Any) -> Any:

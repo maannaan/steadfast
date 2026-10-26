@@ -6,3 +6,5 @@ httptools==0.9.0
 httpx==0.28.1
 pydantic==2.14.1
 pydantic-settings==2.16.1
+# AWS backends (DynamoDB call log, SQS DLQ); unused unless *_BACKEND selects them.
+boto3==1.43.118

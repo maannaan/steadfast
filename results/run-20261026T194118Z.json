@@ -1,0 +1,43 @@
+{
+  "label": "model-e",
+  "run_file": "run-20261026T194118Z.jsonl",
+  "config": {
+    "speed": 1.0,
+    "start": "07:55",
+    "duration_hours": 0.5,
+    "seed": 42
+  },
+  "real_duration_s": 1813.0,
+  "sent": 1037,
+  "succeeded_first_try": 219,
+  "succeeded_after_retry": 163,
+  "failed_downstream": 655,
+  "dlq_reasons": {
+    "retries_exhausted": 492,
+    "circuit_open": 163
+  },
+  "dlq_count": 655,
+  "dlq_rate_pct": 63.16,
+  "latency_ms": {
+    "p50": 833.0,
+    "p95": 20379.0,
+    "p99": 27056.0
+  },
+  "breaker_transitions": null,
+  "breaker_opens": null,
+  "http_errors": 0,
+  "unaccounted": 0,
+  "unaccounted_sample": [],
+  "service_stats_after": {
+    "received": 8704,
+    "succeeded_first_try": 2389,
+    "succeeded_after_retry": 5660,
+    "failed_downstream": 655,
+    "dlq_pending": 655,
+    "dlq_replayed": 1094,
+    "dlq_replay_failed": 0,
+    "dlq_total": 1749,
+    "breaker_state": "closed",
+    "in_flight": 0.0
+  }
+}

@@ -29,6 +29,7 @@ from typing import Any
 
 import httpx
 
+from loadgen.auth import auth_headers, tls_verify
 from loadgen.events import make_event
 from loadgen.schedule import expected_calls, parse_hhmm, rate_per_min
 from loadgen.snapshot import take_snapshot
@@ -73,6 +74,7 @@ async def run_load(
     out_dir: Path,
     concurrency: int,
     sim_date: date,
+    prom_metrics: bool = True,
 ) -> Path:
     rng = random.Random(seed)
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
@@ -93,9 +95,12 @@ async def run_load(
     tasks: set[asyncio.Task[None]] = set()
     counts = {"sent": 0, "done": 0, "http_errors": 0}
 
-    async with httpx.AsyncClient(limits=limits, timeout=30.0) as client:
+    # 90 s read timeout: through CloudFront a multi-turn call can take up to ~60 s.
+    async with httpx.AsyncClient(
+        limits=limits, timeout=90.0, headers=auth_headers(), verify=tls_verify()
+    ) as client:
         try:
-            before = await take_snapshot(client, url)
+            before = await take_snapshot(client, url, prom_metrics)
         except httpx.HTTPError as exc:
             sys.exit(f"service not reachable at {url}: {exc}")
 
@@ -163,7 +168,7 @@ async def run_load(
                 await asyncio.gather(*tasks)
             real_duration = time.monotonic() - loop_start
 
-        after = await take_snapshot(client, url)
+        after = await take_snapshot(client, url, prom_metrics)
 
     meta = {
         "url": url,
@@ -200,6 +205,11 @@ def main() -> None:
     parser.add_argument("--concurrency", type=int, default=64)
     parser.add_argument("--out-dir", type=Path, default=Path("results"))
     parser.add_argument("--sim-date", type=date.fromisoformat, default=date(2026, 9, 1))
+    parser.add_argument(
+        "--no-prom-metrics",
+        action="store_true",
+        help="skip per-process /metrics (use behind a load balancer)",
+    )
     args = parser.parse_args()
     if args.speed <= 0 or args.duration_hours <= 0:
         parser.error("--speed and --duration-hours must be positive")
@@ -215,6 +225,7 @@ def main() -> None:
             out_dir=args.out_dir,
             concurrency=args.concurrency,
             sim_date=args.sim_date,
+            prom_metrics=not args.no_prom_metrics,
         )
     )
 

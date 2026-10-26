@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 
 from service.models import CallResult, Outcome
-from service.store.call_log import CallLog
+from service.store.call_log import SqliteCallLog
 from service.store.db import Database
 
 
@@ -37,7 +37,7 @@ async def test_wal_mode_and_schema(db: Database) -> None:
 
 
 async def test_upsert_is_idempotent_and_updates_in_place(db: Database) -> None:
-    log = CallLog(db)
+    log = SqliteCallLog(db)
     await log.upsert(result(), NOW, NOW)
     await log.upsert(
         result(outcome="connected", status="succeeded", dlq_reason=None, call_duration_s=40),
@@ -53,7 +53,7 @@ async def test_upsert_is_idempotent_and_updates_in_place(db: Database) -> None:
 
 
 async def test_stats_and_existing_ids(db: Database) -> None:
-    log = CallLog(db)
+    log = SqliteCallLog(db)
     await log.upsert(result("a", outcome="connected", status="succeeded", retry_count=0), NOW, NOW)
     await log.upsert(result("b", outcome="dispute", status="succeeded", retry_count=1), NOW, NOW)
     await log.upsert(result("c"), NOW, NOW)
@@ -68,4 +68,4 @@ async def test_stats_and_existing_ids(db: Database) -> None:
 
 
 async def test_get_missing_returns_none(db: Database) -> None:
-    assert await CallLog(db).get("nope") is None
+    assert await SqliteCallLog(db).get("nope") is None

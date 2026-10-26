@@ -5,6 +5,7 @@ outcome is failed_downstream: "the dependency failed, and here is the record". I
 500 only when the call could not be recorded, so a 200 always means "persisted".
 """
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from dataclasses import asdict
@@ -17,17 +18,14 @@ from pydantic import BaseModel, Field, model_validator
 
 from service.config import Settings
 from service.logging_setup import configure_logging, log_event
-from service.metrics import Metrics
+from service.metrics_emf import publish_gauges
 from service.models import CallEvent, CallResult
 from service.pipeline.base import Pipeline
-from service.pipeline.factory import build_pipeline
 from service.replay import replay_dead_letters
-from service.resilience.breaker import CircuitBreaker
-from service.resilience.executor import CallExecutor, PersistenceError
-from service.resilience.retry import RetryPolicy
-from service.store.call_log import CallLog
-from service.store.db import Database
-from service.store.dlq import DLQStatus, SqliteDLQ
+from service.resilience.breaker import BreakerState
+from service.resilience.executor import PersistenceError
+from service.runtime import runtime
+from service.store.dlq import DLQStatus
 
 log = logging.getLogger("steadfast.api")
 
@@ -62,63 +60,41 @@ def create_app(
     async def lifespan(app: FastAPI):
         if setup_logging:
             configure_logging(settings.log_level)
-        db = Database(settings.db_path, settings.db_synchronous)
-        db.open()
-        own_client = http_client is None
-        limits = httpx.Limits(
-            max_connections=settings.http_max_connections,
-            max_keepalive_connections=settings.http_max_connections,
-        )
-        client = http_client or httpx.AsyncClient(limits=limits)
-        metrics = Metrics()
-        breaker = CircuitBreaker(
-            window=settings.breaker_window,
-            min_calls=settings.breaker_min_calls,
-            failure_threshold=settings.breaker_failure_threshold,
-            open_s=settings.breaker_open_s,
-            half_open_max=settings.breaker_half_open_max,
-            on_transition=metrics.on_breaker_transition,
-        )
-        call_log = CallLog(db)
-        dlq = SqliteDLQ(db)
-        executor = CallExecutor(
-            pipeline=pipeline or build_pipeline(settings, client),
-            breaker=breaker,
-            call_log=call_log,
-            dlq=dlq,
-            metrics=metrics,
-            policy=RetryPolicy(
-                max_attempts=settings.max_attempts,
-                base_s=settings.backoff_base_s,
-                cap_s=settings.backoff_cap_s,
-                attempt_timeout_s=settings.attempt_timeout_s,
-                deadline_s=settings.call_deadline_s,
-            ),
-            turns_per_call=settings.turns_per_call,
-            turn_gap_s=settings.turn_gap_s,
-            outcome_seed=settings.outcome_seed,
-        )
-        app.state.settings = settings
-        app.state.db = db
-        app.state.metrics = metrics
-        app.state.breaker = breaker
-        app.state.call_log = call_log
-        app.state.dlq = dlq
-        app.state.executor = executor
-        log_event(
-            log,
-            "service_started",
-            pipeline_backend=settings.pipeline_backend,
-            pipeline_url=settings.pipeline_url,
-        )
-        try:
-            yield
-        finally:
-            undrained = await executor.drain(settings.shutdown_drain_s)
-            log_event(log, "service_stopped", undrained_calls=undrained)
-            if own_client:
-                await client.aclose()
-            db.close()
+        async with runtime(settings, pipeline=pipeline, http_client=http_client) as rt:
+            app.state.settings = settings
+            app.state.metrics = rt.metrics
+            app.state.breaker = rt.breaker
+            app.state.call_log = rt.stores.call_log
+            app.state.dlq = rt.stores.dlq
+            app.state.executor = rt.executor
+            gauges = None
+            if rt.emf:
+                gauges = asyncio.create_task(
+                    publish_gauges(
+                        rt.emf,
+                        lambda: (
+                            rt.metrics.in_flight.value,
+                            rt.breaker.state is BreakerState.OPEN,
+                        ),
+                        settings.gauge_interval_s,
+                    )
+                )
+            log_event(
+                log,
+                "service_started",
+                pipeline_backend=settings.pipeline_backend,
+                pipeline_url=settings.pipeline_url,
+                call_log_backend=settings.call_log_backend,
+                dlq_backend=settings.dlq_backend,
+                metrics_backend=settings.metrics_backend,
+            )
+            try:
+                yield
+            finally:
+                undrained = await rt.executor.drain(settings.shutdown_drain_s)
+                if gauges:
+                    gauges.cancel()
+                log_event(log, "service_stopped", undrained_calls=undrained)
 
     app = FastAPI(title="Steadfast call service", lifespan=lifespan)
 
@@ -163,10 +139,10 @@ def create_app(
         """Readiness: we can record calls. Deliberately NOT tied to pipeline health: if the
         pipeline is down we still accept calls and record them as failed (DLQ). Failing
         readiness then would make a load balancer drop every call on the floor instead."""
-        db_ok = await request.app.state.db.is_writable()
+        log_ok = await request.app.state.call_log.healthy()
         pipeline_ok = getattr(request.app.state, "executor", None) is not None
-        body = {"db_writable": db_ok, "pipeline_client": pipeline_ok}
-        return JSONResponse(status_code=200 if db_ok and pipeline_ok else 503, content=body)
+        body = {"call_log_writable": log_ok, "pipeline_client": pipeline_ok}
+        return JSONResponse(status_code=200 if log_ok and pipeline_ok else 503, content=body)
 
     @app.get("/metrics")
     async def metrics(request: Request) -> PlainTextResponse:

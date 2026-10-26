@@ -33,6 +33,22 @@ jobs:
       - name: Build images
         run: docker compose --profile loadgen build
 
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.17.0
+      - name: Format
+        run: terraform -chdir=infra fmt -check -recursive
+      - name: Init (no backend, no credentials)
+        run: terraform -chdir=infra init -backend=false -input=false
+      - name: Validate
+        run: terraform -chdir=infra validate
+      - name: Shell syntax
+        run: for f in scripts/*.sh; do bash -n "$f"; done
+
   secret-scan:
     runs-on: ubuntu-latest
     steps:

@@ -1,0 +1,83 @@
+teardown verification 2026-10-26T20:44:15+00:00
+region=ap-south-1 project=steadfast
+
+[ok] tagging API Project=steadfast (ap-south-1): 0 remaining
+    ignored (not billable): arn:aws:ec2:ap-south-1:<account>:volume/vol-05f830f0e2de64b0c
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:cluster/steadfast
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task/steadfast/bfbae8c7bede4be590e6f3882d039d74
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task/steadfast/f2379be6aa2a402c8e45724e1cdaf1cf
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-orchestrator:1
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-replay:10
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-orchestrator:10
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-orchestrator:6
+    ignored (not billable): arn:aws:ec2:ap-south-1:<account>:natgateway/nat-0234b7dc65b5d21d9
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:service/steadfast/steadfast-mock
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-orchestrator:5
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-orchestrator:13
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-replay:5
+    ignored (not billable): arn:aws:ec2:ap-south-1:<account>:security-group-rule/sgr-0d7745ead9bdda74a
+    ignored (not billable): arn:aws:ec2:ap-south-1:<account>:security-group-rule/sgr-0926a75da06ee99bc
+    ignored (not billable): arn:aws:ec2:ap-south-1:<account>:vpc-endpoint/vpce-08f1588ffbdf4d2b1
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:service/steadfast/steadfast-replay
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:service/steadfast/steadfast-model
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-replay:1
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-orchestrator:3
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-mock:4
+    ignored (not billable): arn:aws:ec2:ap-south-1:<account>:security-group-rule/sgr-0c6e09b4eee2b2ad3
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task/steadfast/5ba68069c74945e8aa4ede6de39c3d86
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-replay:6
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-orchestrator:9
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-replay:7
+    ignored (not billable): arn:aws:ec2:ap-south-1:<account>:instance/i-0791aa4b24bd24dc2
+    ignored (not billable): arn:aws:ec2:ap-south-1:<account>:security-group-rule/sgr-07c69bac6f0c31f91
+    ignored (not billable): arn:aws:ec2:ap-south-1:<account>:security-group-rule/sgr-0ea048ee49910554e
+    ignored (not billable): arn:aws:ec2:ap-south-1:<account>:security-group-rule/sgr-0c724f4c79967030a
+    ignored (not billable): arn:aws:ec2:ap-south-1:<account>:vpc-endpoint/vpce-09d6f23e2895749d3
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task/steadfast/1528dadf765d4549b2d2becbdc1f7bb4
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-orchestrator:4
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-orchestrator:11
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-mock:5
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-replay:8
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-replay:4
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-replay:9
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-model:6
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-mock:2
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-model:3
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-model:4
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-replay:2
+    ignored (not billable): arn:aws:ec2:ap-south-1:<account>:instance/i-0e171404c9fd5d22b
+    ignored (not billable): arn:aws:ec2:ap-south-1:<account>:instance/i-040958959fe9c701e
+    ignored (not billable): arn:aws:ec2:ap-south-1:<account>:instance/i-05deccbe145ecddf7
+    ignored (not billable): arn:aws:ec2:ap-south-1:<account>:instance/i-035dc09794a1229be
+    ignored (not billable): arn:aws:ec2:ap-south-1:<account>:security-group-rule/sgr-0105b08db9b6f78ea
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:service/steadfast/steadfast-orchestrator
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task/steadfast/ff59a81410014923b8e7cfcb374a08f4
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task/steadfast/c6e2b8c6085e44b997b68665511482b3
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-mock:6
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-orchestrator:8
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-model:1
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-orchestrator:7
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-mock:1
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-model:2
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-orchestrator:12
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-mock:7
+    ignored (not billable): arn:aws:ec2:ap-south-1:<account>:instance/i-0faad044533c45797
+    ignored (not billable): arn:aws:ec2:ap-south-1:<account>:instance/i-0adb7c218f4e2766a
+    ignored (not billable): arn:aws:ec2:ap-south-1:<account>:security-group-rule/sgr-0c41c72f9a746d79f
+    ignored (not billable): arn:aws:ec2:ap-south-1:<account>:security-group-rule/sgr-0712c9fc88b52785d
+    ignored (not billable): arn:aws:ec2:ap-south-1:<account>:security-group-rule/sgr-0b08d573f1721bc33
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-orchestrator:2
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-model:5
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-mock:3
+    ignored (not billable): arn:aws:ecs:ap-south-1:<account>:task-definition/steadfast-replay:3
+[ok] tagging API Project=steadfast (us-east-1): 0 remaining
+[ok] EC2 instances: 0 remaining
+    ignored (not billable): i-035dc09794a1229be (terminated)
+[ok] NAT gateways: 0 remaining
+[ok] Elastic IPs: 0 remaining
+[ok] EBS volumes: 0 remaining
+[ok] VPCs: 0 remaining
+[ok] load balancers: 0 remaining
+[ok] ECS clusters: 0 remaining
+
+RESULT: PASS

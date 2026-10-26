@@ -1,0 +1,16 @@
+# Model server (model/app.py). llama-cpp-python (MIT) is installed separately in the
+# Dockerfile: compiled for CPU, a prebuilt CUDA wheel for GPU.
+fastapi==0.162.0
+uvicorn==0.54.0
+pydantic==2.14.1
+pydantic-settings==2.16.1
+boto3==1.43.118
+# STT: CTranslate2 Whisper (MIT).
+faster-whisper==1.1.1
+# faster_whisper.utils imports requests without declaring it; huggingface-hub 1.x no
+# longer pulls it in.
+requests==2.34.2
+# faster-whisper 1.1.1 passes av.open(metadata_errors=...), which PyAV 19 removed; it only
+# requires av>=11, so pin a version verified to accept it. PyAV is BSD; its bundled
+# FFmpeg is LGPL and dynamically linked.
+av==15.1.0

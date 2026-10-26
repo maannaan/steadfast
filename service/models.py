@@ -79,3 +79,5 @@ class PipelineResult(BaseModel):
     transcript: str
     response_audio_ref: str
     latency_ms: int = Field(ge=0)
+    # Model server only: per-stage timings (stt, llm, tts, queue) in ms.
+    stage_ms: dict[str, int] | None = None

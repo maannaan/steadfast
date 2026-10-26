@@ -11,7 +11,7 @@ from service.models import Outcome
 from service.resilience.breaker import CircuitBreaker
 from service.resilience.executor import CallExecutor, PersistenceError, sample_outcome
 from service.resilience.retry import RetryPolicy
-from service.store.call_log import CallLog
+from service.store.call_log import SqliteCallLog
 from service.store.db import Database
 from service.store.dlq import SqliteDLQ
 from tests.conftest import OK, FakeClock, FakePipeline, make_event, r400, r503
@@ -21,7 +21,7 @@ def build(db: Database, pipeline: FakePipeline, clock: FakeClock, **kw: object) 
     return CallExecutor(
         pipeline=pipeline,
         breaker=kw.pop("breaker", None) or CircuitBreaker(clock=clock),  # type: ignore[arg-type]
-        call_log=CallLog(db),
+        call_log=SqliteCallLog(db),
         dlq=SqliteDLQ(db),
         metrics=kw.pop("metrics", None) or Metrics(),  # type: ignore[arg-type]
         policy=RetryPolicy(),
@@ -38,7 +38,7 @@ async def test_success_assigns_business_outcome(db: Database, clock: FakeClock) 
     assert result.status == "succeeded"
     assert result.outcome is not Outcome.FAILED_DOWNSTREAM
     assert result.retry_count == 1
-    assert (await CallLog(db).get("evt-1")) == result
+    assert (await SqliteCallLog(db).get("evt-1")) == result
     assert (await SqliteDLQ(db).stats())["total"] == 0
 
 
@@ -101,7 +101,7 @@ async def test_unexpected_pipeline_bug_is_still_recorded(db: Database, clock: Fa
     pipeline = FakePipeline([ZeroDivisionError("bug")])
     result = await build(db, pipeline, clock).handle_call(make_event())
     assert result.dlq_reason == "internal_error:ZeroDivisionError"
-    assert await CallLog(db).get("evt-1") is not None
+    assert await SqliteCallLog(db).get("evt-1") is not None
 
 
 async def test_turns_per_call_runs_each_turn_with_retry(db: Database, clock: FakeClock) -> None:
@@ -215,7 +215,7 @@ async def test_api_dlq_replay_and_stats(tmp_path) -> None:
 
         assert (await client.get("/health")).status_code == 200
         assert (await client.get("/ready")).json() == {
-            "db_writable": True,
+            "call_log_writable": True,
             "pipeline_client": True,
         }
         lookup = await client.post("/calls/lookup", json={"event_ids": ["a1f2c3d4-0001", "zz"]})

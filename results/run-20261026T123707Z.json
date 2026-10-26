@@ -1,0 +1,43 @@
+{
+  "label": "aws-burst",
+  "run_file": "run-20261026T123707Z.jsonl",
+  "config": {
+    "speed": 6.0,
+    "start": "07:45",
+    "duration_hours": 0.5,
+    "seed": 42
+  },
+  "real_duration_s": 321.6,
+  "sent": 605,
+  "succeeded_first_try": 30,
+  "succeeded_after_retry": 94,
+  "failed_downstream": 481,
+  "dlq_reasons": {
+    "retries_exhausted": 177,
+    "circuit_open": 304
+  },
+  "dlq_count": 481,
+  "dlq_rate_pct": 79.5,
+  "latency_ms": {
+    "p50": 11304.0,
+    "p95": 27962.0,
+    "p99": 29160.0
+  },
+  "breaker_transitions": null,
+  "breaker_opens": null,
+  "http_errors": 0,
+  "unaccounted": 0,
+  "unaccounted_sample": [],
+  "service_stats_after": {
+    "received": 1212,
+    "succeeded_first_try": 194,
+    "succeeded_after_retry": 514,
+    "failed_downstream": 504,
+    "dlq_pending": 504,
+    "dlq_replayed": 0,
+    "dlq_replay_failed": 0,
+    "dlq_total": 504,
+    "breaker_state": "open",
+    "in_flight": 0.0
+  }
+}
