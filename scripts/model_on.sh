@@ -7,8 +7,8 @@
 # Env:   AUTO_APPROVE=1
 #
 # Writes infra/model.auto.tfvars (gitignored), which later applies keep using until
-# scripts/model_off.sh. Cost while on: see docs/COST.md (CPU c7i.xlarge ~$0.10/h,
-# GPU g5.xlarge ~$1.2/h, plus EBS).
+# scripts/model_off.sh. Cost while on: see docs/COST.md (CPU c7i.xlarge ~$0.18/h,
+# GPU g5.xlarge ~$1.21/h, plus EBS).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

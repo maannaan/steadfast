@@ -71,32 +71,6 @@ instances, or the GPU tier.
 
 Source: `results/run-20261026T194118Z.json`, `results/aws-model-e-20261026T201146Z.json`.
 
-## Load test against one instance (Phase E)
-
-`SPEED=1 START=07:55 HOURS=0.5 LABEL=model-e WAIT_SCALE_IN=0 scripts/load_aws.sh`:
-real-time traffic from 5 minutes of baseline (10 calls/min) through the 15-minute ramp
-to the 50 calls/min peak, with 20% fault injection, against a single CPU model instance.
-
-| | |
-|---|---|
-| sent | 1037 |
-| succeeded (first try / after retry) | 382 (219 / 163) |
-| dead-lettered | 655 (492 retries exhausted, 163 rejected while the breaker was open) |
-| HTTP errors | 0 |
-| **unaccounted** | **0** |
-
-The instance serves about 13 calls per minute (16 turns per minute, minus attempts lost to
-injected faults), so by 08:00 demand already exceeds it. What the run shows is the
-behaviour at 4x overload: the model rejects at once (429) instead of letting latency
-grow without bound, and the orchestrator retries and then opens its breaker instead of
-piling on. Every call that cannot be served ends up in the DLQ with a reason, ready to
-replay (Phase B showed replay drains the queue). Serving the peak needs about 4 model
-instances, or the GPU tier.
-
-![Phase E load](model-load.png)
-
-Source: `results/run-20261026T194118Z.json`, `results/aws-model-e-20261026T201146Z.json`.
-
 ## Deviations from the plan, and why
 
 - **c7i.xlarge instead of c7i.2xlarge:** the account's standard on-demand quota is 8 vCPU,
