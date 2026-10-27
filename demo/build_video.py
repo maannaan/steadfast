@@ -33,7 +33,7 @@ ROOT = capture.ROOT
 OUT = capture.OUT
 FPS = 30
 MAX_TOTAL_S = 300
-AUDIO_LEAD_S = 0.4
+AUDIO_LEAD_S = 0.3
 PIPER_URL = (
     "https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_linux_x86_64.tar.gz"
 )

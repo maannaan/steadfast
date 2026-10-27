@@ -30,7 +30,7 @@ scenes:
       stack, in the Asia Pacific region.
 
   - id: smoke
-    slot_s: 30
+    slot_s: 20
     visual: {type: term, capture: smoke}
     record: scripts/aws_smoke.sh
     narration: >-
@@ -40,17 +40,19 @@ scenes:
       task. Smoke test passes.
 
   - id: load-dashboard
-    slot_s: 55
+    slot_s: 36
     visual: {type: console, capture: load-dashboard}
     narration: >-
-      Now a full morning campaign window, seven forty five to ten fifteen, replayed at six
-      times speed: twenty five real minutes, shown here much faster. The mock pipeline fails
-      one turn in five. Retries with jitter absorb most failures. As in-flight calls per
-      task pass twenty, target tracking scales the Fargate service out, and back in after
-      the peak.
+      Now a full morning campaign window replayed at speed: twenty five real minutes shown in
+      under forty seconds. The mock pipeline injects transient faults on one turn in five,
+      absorbed by exponential backoff and jitter. Watch the CloudWatch dashboard: as in-flight
+      calls climb past twenty per task, target tracking automatically scales the Fargate
+      service out from two to six tasks across multiple availability zones. Turn latency holds
+      steady under one point five seconds, and once the morning peak subsides, tasks scale
+      cleanly back down to baseline.
 
   - id: load-report
-    slot_s: 15
+    slot_s: 11
     visual: {type: term, capture: load-window, start_at: "scenario"}
     record: scripts/load_aws.sh
     narration: >-
@@ -58,7 +60,7 @@ scenes:
       result or a dead letter. Unaccounted: zero.
 
   - id: dlq-replay
-    slot_s: 30
+    slot_s: 19
     visual: {type: term, capture: dlq-replay}
     record: scripts/replay_aws.sh
     narration: >-
@@ -67,24 +69,25 @@ scenes:
       calling hours. Replays are idempotent: a call replayed twice is still recorded once.
 
   - id: outage
-    slot_s: 22
+    slot_s: 16
     visual: {type: term, capture: outage, start_at: "DEGRADED"}
     record: scripts/outage_aws.sh
     narration: >-
-      A failure drill. The pipeline slows down past the attempt timeout. Turns retry, slow
-      calls are dead lettered instead of hanging, and the per-turn latency alarm fires.
-      Nothing is lost.
+      A failure drill. Downstream latency spikes past the attempt timeout. Turns retry with
+      backoff, slow calls are dead lettered instead of hanging the caller, and the per-turn
+      CloudWatch latency alarm fires. Nothing is lost.
 
   - id: az-drill
-    slot_s: 20
+    slot_s: 18
     visual: {type: term, capture: az-drill, start_at: "stopping every"}
     record: scripts/az_drill.sh
     narration: >-
-      Next, every orchestrator task in one availability zone is stopped mid-load. Tasks
-      drain their calls, the other zone keeps serving, and the client sees no errors.
+      Next, a multi-availability zone failure drill. Every orchestrator task in zone A is
+      terminated mid-load. In-flight calls drain cleanly, the remaining zone absorbs traffic
+      with zero dropped calls, and E C S rebalances tasks automatically.
 
   - id: bluegreen
-    slot_s: 30
+    slot_s: 18
     visual: {type: term, capture: bluegreen}
     record: scripts/bluegreen_demo.sh
     narration: >-
@@ -93,7 +96,7 @@ scenes:
       production traffic: it fails readiness, and E C S rolls it back on its own.
 
   - id: models
-    slot_s: 43
+    slot_s: 28
     visual: {type: term, capture: models}
     record: scripts/model_demo.sh
     narration: >-
@@ -108,16 +111,17 @@ scenes:
     visual: {type: term, capture: teardown, start_at: "teardown finished|PASS|FAIL"}
     record: scripts/teardown.sh
     narration: >-
-      At the end of every session the whole stack is destroyed, and a script asks AWS
-      directly whether anything tagged for the project is left. Pass.
+      At the end of every session, the entire stack is destroyed with Terraform, and an
+      independent verification script queries AWS APIs across all resource types. Zero
+      instances, zero gateways, zero residual cost. Teardown passes.
 
   - id: close
-    slot_s: 12
+    slot_s: 13
     visual:
       type: card
       title: "Zero unaccounted calls"
       subtitle: "This session cost {session_cost} on AWS. Code, results, runbook: github.com/maannaan/steadfast (Apache-2.0)"
       image: docs/diagrams/call-flow.png
     narration: >-
-      This whole session cost {session_cost_spoken}. The code, results and runbook are on
-      GitHub, under Apache two point oh.
+      This entire session cost just {session_cost_spoken} on AWS. Full source code,
+      architecture runbooks, and test results are on GitHub under Apache two point oh.
