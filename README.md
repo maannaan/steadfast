@@ -39,21 +39,9 @@ Contents:
 
 ## How a call flows
 
-```mermaid
-flowchart LR
-    G["Load generator<br/>(Appendix C profile)"] -->|"POST /calls"| S["Call service<br/>(FastAPI)"]
-    S --> I{"event_id already<br/>recorded?"}
-    I -->|yes| OK["200 + stored result"]
-    I -->|no| B{"Circuit breaker"}
-    B -->|"closed / half-open"| R["Retry: 3 attempts,<br/>full jitter, 2.5 s/attempt,<br/>8 s deadline"]
-    R --> P["Pipeline protocol<br/>mock or STT → LLM → TTS"]
-    P -->|success| L[("Call log")]
-    R -->|"retries exhausted"| D[("DLQ + reason")]
-    B -->|"open: fail fast"| D
-    D -->|"failed_downstream row"| L
-    L --> OK
-    D -.->|"replay (CLI / worker),<br/>rate-limited"| B
-```
+![How a call flows: idempotency check, circuit breaker, retry, pipeline, call log or DLQ, replay](docs/diagrams/call-flow.png)
+
+Source: [docs/diagrams/call-flow.mmd](docs/diagrams/call-flow.mmd) (Mermaid).
 
 `POST /calls` answers 200 only once the outcome is written, and that includes a failed
 call that was dead-lettered. It answers 500 only if the call could not be recorded, so the
@@ -246,23 +234,9 @@ The AWS scripts also read the variables below; `.env.example` explains each:
 
 ## Round 2: AWS (ap-south-1)
 
-```mermaid
-flowchart LR
-    C["Client / loadgen"] -->|"HTTPS + x-steadfast-key"| ALB["ALB<br/>(public subnets, 2 AZs)"]
-    subgraph VPC["VPC, ap-south-1"]
-      ALB --> O["Orchestrator<br/>Fargate 0.5 vCPU, 2-10 tasks<br/>scales on InFlightCalls/task"]
-      O -->|"Service Connect"| M["Mock pipeline<br/>Fargate"]
-      O -.->|"Service Connect<br/>(model_on.sh)"| MT["Model tier: ECS on EC2<br/>STT→LLM→TTS<br/>c7i.xlarge or g5.xlarge, ASG 0-1"]
-      O --> DDB[("DynamoDB<br/>call log + DLQ index")]
-      O --> SQS[("SQS DLQ")]
-      SQS --> W["Replay worker<br/>Fargate, 0-1<br/>same executor"]
-      W --> M
-      W --> DDB
-      MT --> S3[("S3 weights<br/>via gateway endpoint")]
-      O -.->|"SQS, ECR, Logs"| NAT["NAT gateway"]
-    end
-    O -->|"EMF log lines"| CW["CloudWatch: metrics, dashboard,<br/>alarms → SNS, ECS events"]
-```
+![AWS architecture: ALB, Fargate orchestrator, mock, model tier on EC2, DynamoDB, SQS DLQ, replay worker, CloudWatch](docs/diagrams/aws-architecture.png)
+
+Source: [docs/diagrams/aws-architecture.mmd](docs/diagrams/aws-architecture.mmd) (Mermaid).
 
 What the deployment consists of:
 - **Network:** tasks run in private subnets. DynamoDB and S3 are reached through free

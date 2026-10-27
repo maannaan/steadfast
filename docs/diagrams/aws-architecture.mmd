@@ -1,0 +1,15 @@
+flowchart LR
+    C["Client / loadgen"] -->|"HTTPS + x-steadfast-key"| ALB["ALB<br/>(public subnets, 2 AZs)"]
+    subgraph VPC["VPC, ap-south-1"]
+      ALB --> O["Orchestrator<br/>Fargate 0.5 vCPU, 2-10 tasks<br/>scales on InFlightCalls/task"]
+      O -->|"Service Connect"| M["Mock pipeline<br/>Fargate"]
+      O -.->|"Service Connect<br/>(model_on.sh)"| MT["Model tier: ECS on EC2<br/>STT→LLM→TTS<br/>c7i.xlarge or g5.xlarge, ASG 0-1"]
+      O --> DDB[("DynamoDB<br/>call log + DLQ index")]
+      O --> SQS[("SQS DLQ")]
+      SQS --> W["Replay worker<br/>Fargate, 0-1<br/>same executor"]
+      W --> M
+      W --> DDB
+      MT --> S3[("S3 weights<br/>via gateway endpoint")]
+      O -.->|"SQS, ECR, Logs"| NAT["NAT gateway"]
+    end
+    O -->|"EMF log lines"| CW["CloudWatch: metrics, dashboard,<br/>alarms → SNS, ECS events"]

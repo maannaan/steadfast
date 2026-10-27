@@ -1,0 +1,13 @@
+flowchart TD
+    G["Load generator<br/>(Appendix C profile)"] -->|"POST /calls"| S["Call service<br/>(FastAPI)"]
+    S --> I{"event_id already<br/>recorded?"}
+    I -->|yes| OK["200 + stored result"]
+    I -->|no| B{"Circuit breaker"}
+    B -->|"closed / half-open"| R["Retry: 3 attempts,<br/>full jitter, 2.5 s/attempt,<br/>8 s deadline"]
+    R --> P["Pipeline protocol<br/>mock or STT → LLM → TTS"]
+    P -->|success| L[("Call log")]
+    R -->|"retries exhausted"| D[("DLQ + reason")]
+    B -->|"open: fail fast"| D
+    D -->|"failed_downstream row"| L
+    L --> OK
+    D -.->|"replay (CLI / worker),<br/>rate-limited"| B
