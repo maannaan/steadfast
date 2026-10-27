@@ -6,6 +6,8 @@ the way the resilience layer expects.
 """
 
 import asyncio
+import json
+import logging
 import threading
 import time
 from collections.abc import AsyncIterator
@@ -93,18 +95,26 @@ async def test_health_is_503_until_warm(tmp_path: Path) -> None:
             assert (await c.get("/health")).status_code == 200
 
 
-async def test_fault_injection_returns_the_spec_failure(tmp_path: Path) -> None:
+async def test_fault_injection_returns_the_spec_failure(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
     app = make(tmp_path)
     app.state.engine.settings.fault_rate = 1.0
     async with app.router.lifespan_context(app):
         await started(app)
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://m") as c:
-            r = await c.post("/pipeline/process", json={"event_id": "e1"})
+            with caplog.at_level(logging.WARNING, logger="model"):
+                r = await c.post("/pipeline/process", json={"event_id": "e1"})
     assert r.status_code == 503 and r.json() == {
         "status": "error",
         "reason": "downstream_timeout",
     }
+    messages = [rec.getMessage() for rec in caplog.records]
+    rejected = [json.loads(m) for m in messages if "model_rejected" in m]
+    assert rejected == [
+        {"event": "model_rejected", "event_id": "e1", "status": 503, "reason": "downstream_timeout"}
+    ]
 
 
 async def test_full_queue_is_a_fast_429(tmp_path: Path) -> None:

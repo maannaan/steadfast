@@ -145,24 +145,40 @@ that slow surface as ALB 504s and trip `steadfast-5xx-rate` instead. For single-
 
 ## Procedures
 
-**Deploy or update** (builds images tagged with the git SHA, then applies):
+**Deploy or update (Native ECS Blue/Green):**
+
+Steadfast uses ECS native Blue/Green deployment (`infra/orchestrator.tf`) on AWS provider 6.x. The new version spins up in an alternate target group, undergoes pre-shift testing via the `x-steadfast-green: 1` test header rule, bakes for 2 minutes, and then shifts 100% production traffic.
 
 ```bash
-make aws-deploy        # = scripts/deploy.sh; asks before each terraform apply
+make aws-deploy        # = scripts/deploy.sh; builds SHA-tagged image, applies terraform
 make aws-smoke         # access control, health, one call recorded and looked up
 ```
 
-A bad image never replaces the running one. The ECS deployment circuit breaker rolls back
-automatically.
-
-**Roll back to a previous image** (tags are immutable git SHAs, so a rollback is a redeploy
-of an older tag):
+**Blue/Green verification and automated rollback:**
 
 ```bash
-aws ecr describe-images --repository-name steadfast-orchestrator \
-  --query 'sort_by(imageDetails,&imagePushedAt)[*].imageTags[0]' --output text
-IMAGE_TAG=<previous tag> scripts/deploy.sh   # reuses the image already in ECR
+# Exercise full blue/green deployment with test traffic, 2-min bake, and clean shift:
+scripts/bluegreen_demo.sh good
+
+# Demonstrate automated rollback on failure:
+# Deploys a revision with an invalid CALL_LOG_TABLE; green fails /ready,
+# never receives production traffic, and ECS rolls back automatically:
+scripts/bluegreen_demo.sh bad
 ```
+
+**Multi-AZ failure drill:**
+
+Simulates the loss of an entire availability zone mid-campaign load:
+
+```bash
+scripts/az_drill.sh    # terminates all orchestrator tasks in one AZ during active traffic
+```
+
+The drill monitors ALB target health, confirms remaining tasks absorb in-flight calls without dropping connections, and verifies with `loadgen.report` that `unaccounted = 0` and client HTTP errors = 0.
+
+**Campaign calling window (RBI Compliance):**
+
+Outbound calls and DLQ replays are restricted by regulation to `08:00–19:00 IST` (`REPLAY_CALLING_WINDOW` in `service/config.py`). Replay workers defer execution outside this window, logging `replay_deferred`, ensuring borrowers are never dialed outside legal recovery hours.
 
 **Model tier on and off.** It costs nothing while off: the ASG goes to 0 instances.
 

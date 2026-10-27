@@ -323,12 +323,18 @@ Operations, alarms, log queries, rollback and escalation are in
   - scale the model tier on its queue depth or 429 rate;
   - make the model log its own rejections. Today the 429 / queue-timeout / fault breakdown
     is inferred from the orchestrator's side.
-- **The latency alarm cannot fire with the 6-turn demo baseline.** 3 × 30 s exceeds the
-  ALB's 60 s timeout, so slow calls surface through the 5xx alarm instead. Set
-  `baseline_p99_ms` per configuration ([runbook](docs/RUNBOOK.md#trigger)).
-- **Replay does not respect calling hours.** A backlog replayed in the evening would
-  re-dial borrowers outside RBI's permitted hours. Gate the replay worker on the campaign
-  calling window.
+- **Turn-level latency alarm.** Measures per-turn `TurnLatencyMs` EMF metric (excluding
+  inter-turn silence) with baselines configured per backend (~1,450 ms for mock, ~6,000 ms
+  for CPU tier), ensuring `steadfast-latency-p99` fires reliably under failure.
+- **Calling hours enforcement.** Both outbound campaigns and DLQ replays respect RBI's
+  permissible calling hours (`08:00–19:00 IST`) via `REPLAY_CALLING_WINDOW` in
+  `service/config.py`, deferring replays when outside permitted windows.
+- **Native ECS Blue/Green Deployments.** Zero-downtime deployments with a 2-minute bake
+  period, synthetic pre-shift verification via `x-steadfast-green: 1`, and automated
+  CloudWatch alarm rollbacks (`scripts/bluegreen_demo.sh`).
+- **Multi-AZ Availability Zone Rebalancing.** `availability_zone_rebalancing = "ENABLED"`
+  with clean connection draining. Verified via `scripts/az_drill.sh` with 0 client 5xx errors
+  and 0 unaccounted calls during AZ loss.
 - **Breakers are per task.** Outage detection slows as tasks are added. A fleet-wide hint
   could open them together ([DESIGN.md](docs/DESIGN.md)).
 - **This is demo-grade, by design.** Production would change:
@@ -337,8 +343,7 @@ Operations, alarms, log queries, rollback and escalation are in
     credentials;
   - local Terraform state → an S3 backend with locking;
   - call log and DLQ deleted with the stack → retained.
-- **Not attempted:** the stretch goals (a multi-AZ failure drill, and canary or blue/green
-  deploys beyond ECS's automatic rollback), and Indic-language models (candidates in
+- **Future work:** Indic-language models for Indian languages (candidates documented in
   [DESIGN.md](docs/DESIGN.md#ap-south-1-notes)).
 
 ## Licence

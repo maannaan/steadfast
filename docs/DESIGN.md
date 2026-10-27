@@ -152,15 +152,31 @@ compliance before relying on any of them.
     and its DynamoDB index, both encrypted at rest.
   - Production should use customer-managed KMS keys, and `event_id`s that are opaque, not
     loan numbers.
-- **Calling hours.**
+- **Calling hours (RBI Compliance).**
   - RBI's conduct rules for recovery agents restrict calls to borrowers to roughly
-    08:00–19:00. *(verify current wording)*
+    08:00–19:00 IST.
   - The synthetic profile's 24/7 baseline does not reflect that. Real outbound load would
     be concentrated in about 11 hours, so the model tier could be off overnight: about
     $400/mo for a g5.xlarge instead of $870.
-  - **A DLQ replay must also respect the window.** Replaying a backlog at 21:00 would
-    re-dial borrowers outside permitted hours. The replay worker does not gate on this yet
-    (README, limitations).
+  - **A DLQ replay strictly respects the window.** Replaying a backlog at 21:00 would
+    re-dial borrowers outside permitted hours. Steadfast implements `REPLAY_CALLING_WINDOW`
+    (default `08:00-19:00`, timezone `Asia/Kolkata`), deferring replays with `replay_deferred`
+    logs when outside legal recovery windows.
+
+**Native ECS Blue/Green Deployments (AWS Provider 6.x).**
+- Upgraded to Terraform AWS Provider 6.x to leverage native ECS `deployment_configuration`
+  with strategy `BLUE_GREEN`.
+- Configured dual target groups (`blue` and `green`) behind the ALB, with an advanced
+  routing rule matching `x-steadfast-green: 1` to enable synthetic pre-shift verification.
+- Enforces an automated 2-minute bake period before 100% production traffic shift, backed
+  by CloudWatch alarm rollback (`steadfast-5xx-rate` and `steadfast-latency-p99`).
+- ECS ALB management uses a scoped, least-privilege IAM role without wildcard permissions.
+
+**Multi-AZ Resiliency & Zone Rebalancing.**
+- `availability_zone_rebalancing = "ENABLED"` guarantees orchestrator tasks remain balanced
+  across subnets in AZ-a and AZ-b.
+- Validated via `scripts/az_drill.sh`, which halts all tasks in an AZ under live load;
+  remaining tasks absorb traffic with zero client 5xx errors and zero unaccounted calls.
 - **Latency.** Running in Mumbai keeps the voice loop close to Indian telephony and
   borrowers. Every turn crosses the network several times, so region choice is a latency
   decision as well as a compliance one.

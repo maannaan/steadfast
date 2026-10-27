@@ -160,16 +160,26 @@ class CallExecutor:
         retries = 0
         failure: tuple[str, int, str | None] | None = None  # (dlq reason, attempts, last error)
         errors = 0
+        # Per-turn latency (retries and backoff included, TURN_GAP_S excluded): the part of a
+        # call a struggling dependency stretches, so the latency alarm watches this rather
+        # than whole-call latency, which on multi-turn calls is mostly deliberate gaps.
+        turn_ms: list[int] = []
+        turn_start: float | None = None
 
         def on_attempt(error: Exception | None) -> None:
             nonlocal errors
             self._on_attempt(error)
             errors += error is not None
 
+        def end_turn() -> None:
+            if turn_start is not None:
+                turn_ms.append(max(round((self._clock() - turn_start) * 1000), 0))
+
         try:
             for turn in range(self._turns):
                 if turn and self._turn_gap_s:
                     await self._sleep(self._turn_gap_s)
+                turn_start = self._clock()
                 _, used = await call_with_retry(
                     lambda: self._pipeline.process(event.event_id, AUDIO_REF),
                     policy=self._policy,
@@ -180,6 +190,8 @@ class CallExecutor:
                     on_attempt=on_attempt,
                 )
                 retries += used
+                end_turn()
+                turn_start = None
         except RetryGiveUpError as exc:
             retries += max(exc.attempts - 1, 0)
             failure = (exc.reason, exc.attempts, exc.last_error)
@@ -190,11 +202,12 @@ class CallExecutor:
             # A bug in a pipeline implementation must still leave a record, never a lost call.
             log.exception("unexpected pipeline error", extra={"fields": {"event": "error"}})
             failure = (f"internal_error:{type(exc).__name__}", 0, str(exc))
+        end_turn()
 
         latency_ms = round((self._clock() - start) * 1000)
         result = self._build_result(event, retries, latency_ms, failure)
         await self._persist(event, result, failure, received_at)
-        self._record(result, replay, errors)
+        self._record(result, replay, errors, turn_ms)
         return result
 
     def _build_result(
@@ -253,7 +266,9 @@ class CallExecutor:
         if error is not None:
             self._metrics.downstream_errors_total.inc(kind=error_kind(error))
 
-    def _record(self, result: CallResult, replay: bool, downstream_errors: int) -> None:
+    def _record(
+        self, result: CallResult, replay: bool, downstream_errors: int, turn_ms: list[int]
+    ) -> None:
         m = self._metrics
         m.calls_total.inc(outcome=result.outcome.value)
         m.retries_total.inc(result.retry_count)
@@ -266,9 +281,10 @@ class CallExecutor:
                 downstream_errors=downstream_errors,
                 dlq=result.dlq_reason is not None,
                 latency_ms=result.latency_ms,
+                turn_latency_ms=turn_ms,
             )
             if self._emf
-            else {}
+            else {"turn_latency_ms": turn_ms}
         )
         log_event(
             log,

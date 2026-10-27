@@ -14,8 +14,12 @@ resource "aws_lb" "main" {
   drop_invalid_header_fields = true
 }
 
+# Two identical target groups for ECS native blue/green: during a deployment the new
+# ("green") revision registers in whichever group is idle, is tested through the test
+# listener rule, and only then does ECS move the production rule's weight over to it.
 resource "aws_lb_target_group" "orchestrator" {
-  name        = "${var.name}-orchestrator"
+  for_each    = toset(["blue", "green"])
+  name        = "${var.name}-orch-${each.key}"
   port        = 8080
   protocol    = "HTTP"
   target_type = "ip"
@@ -39,6 +43,11 @@ resource "aws_lb_target_group" "orchestrator" {
 
 locals {
   use_model = var.pipeline_target == "model"
+
+  # ECS manages exactly one production listener rule. With CloudFront on there are two
+  # (HTTPS and the CloudFront-only HTTP listener), and the second would keep pointing at
+  # the old target group after a shift, so that setup deploys rolling instead.
+  blue_green = !var.enable_cloudfront
 
   # Against the model a turn takes seconds, not the mock's ~0.3 s: longer timeouts and
   # one turn per call. The mock keeps the multi-turn demo settings that make it scale.
@@ -67,8 +76,10 @@ locals {
     LOG_LEVEL          = "INFO"
     # Metrics leave the task as EMF log lines, which CloudWatch turns into metrics: the
     # task role needs no cloudwatch:PutMetricData (an action that only takes Resource "*").
-    METRICS_BACKEND = "emf"
-    SERVICE_NAME    = local.orchestrator_service_name
+    METRICS_BACKEND       = "emf"
+    SERVICE_NAME          = local.orchestrator_service_name
+    REPLAY_CALLING_WINDOW = var.replay_calling_window
+    SERVICE_VERSION       = var.image_tag
   })
   orchestrator_service_name = "${var.name}-orchestrator"
   replay_service_name       = "${var.name}-replay"
@@ -127,15 +138,38 @@ resource "aws_ecs_service" "orchestrator" {
   launch_type     = "FARGATE"
   propagate_tags  = "SERVICE"
 
-  # 150% caps a deploy at 3 tasks when running 2, inside the 8 vCPU Fargate quota.
+  # Blue/green starts a full green copy next to blue (2 + 2 tasks at the demo's size,
+  # inside the 8 vCPU Fargate quota). A rolling deploy adds at most half again.
   deployment_minimum_healthy_percent = 100
-  deployment_maximum_percent         = 150
+  deployment_maximum_percent         = local.blue_green ? 200 : 150
 
-  # A bad image never replaces the running one: ECS rolls back automatically.
+  deployment_configuration {
+    strategy = local.blue_green ? "BLUE_GREEN" : "ROLLING"
+    # Green holds production traffic for 2 minutes with blue still running, so a
+    # rollback during the bake is a weight flip, not a redeploy.
+    bake_time_in_minutes = local.blue_green ? "2" : null
+  }
+
+  # A bad image never replaces the running one: ECS rolls back automatically, either
+  # because green tasks never pass /ready (circuit breaker) or because a call-quality
+  # alarm fires before the bake ends.
   deployment_circuit_breaker {
     enable   = true
     rollback = true
   }
+
+  alarms {
+    alarm_names = [
+      aws_cloudwatch_metric_alarm.error_rate_5xx.alarm_name,
+      aws_cloudwatch_metric_alarm.latency_p99.alarm_name,
+    ]
+    enable   = true
+    rollback = true
+  }
+
+  # After an AZ loses tasks (or comes back), ECS moves tasks to even out the spread
+  # instead of leaving the service lopsided until the next deploy.
+  availability_zone_rebalancing = "ENABLED"
 
   health_check_grace_period_seconds = 30
 
@@ -146,9 +180,19 @@ resource "aws_ecs_service" "orchestrator" {
   }
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.orchestrator.arn
+    target_group_arn = aws_lb_target_group.orchestrator["blue"].arn
     container_name   = "orchestrator"
     container_port   = 8080
+
+    dynamic "advanced_configuration" {
+      for_each = local.blue_green ? [1] : []
+      content {
+        alternate_target_group_arn = aws_lb_target_group.orchestrator["green"].arn
+        production_listener_rule   = aws_lb_listener_rule.with_key.arn
+        test_listener_rule         = aws_lb_listener_rule.green_test.arn
+        role_arn                   = aws_iam_role.ecs_load_balancers.arn
+      }
+    }
   }
 
   # Client-only Service Connect: resolves http://mock:8081.
@@ -158,14 +202,18 @@ resource "aws_ecs_service" "orchestrator" {
   }
 
   # After creation the autoscaler owns the task count; an apply must not reset it mid-peak.
+  # After a blue/green shift ECS swaps which target group is primary; an apply must not
+  # swap it back (that would start another deployment).
   lifecycle {
-    ignore_changes = [desired_count]
+    ignore_changes = [desired_count, load_balancer]
   }
 
   # Service Connect clients learn endpoints when their tasks start, so the mock and model
   # services must be registered first or the first tasks cannot resolve them.
   depends_on = [
     aws_lb_listener_rule.with_key,
+    aws_lb_listener_rule.green_test,
+    aws_iam_role_policy.ecs_load_balancers,
     aws_ecs_service.mock,
     aws_ecs_service.model,
     aws_iam_role_policy.orchestrator_task,

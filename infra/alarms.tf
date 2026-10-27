@@ -1,5 +1,5 @@
 # Three alarms, each tied to a promise the system makes:
-# - latency: calls are answered in normal time (p99 under 3x the measured baseline);
+# - latency: each conversational turn is answered in normal time (p99 under 3x baseline);
 # - DLQ depth: nothing waits in the dead-letter queue for long without someone replaying it;
 # - 5xx rate: the service accepts calls (a dead-lettered call is a 200, so 5xx means a
 #   call we could not even record, the one outcome that breaks "zero unaccounted").
@@ -23,18 +23,25 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
+locals {
+  baseline_turn_p99_ms = var.baseline_turn_p99_ms[var.pipeline_target]
+}
+
+# Per turn, not per call: a 6-turn call is ~27 s by design, so a per-call alarm at 3x would
+# sit above the ALB's 60 s idle timeout and could never fire. A turn includes its retries
+# and backoff (what a borrower waits through) but not the gap between turns.
 resource "aws_cloudwatch_metric_alarm" "latency_p99" {
   alarm_name          = "${var.name}-latency-p99"
-  alarm_description   = "ALB p99 response time above 3x the baseline (${var.baseline_p99_ms} ms) for 3 of 5 minutes."
-  namespace           = "AWS/ApplicationELB"
-  metric_name         = "TargetResponseTime"
-  dimensions          = { LoadBalancer = aws_lb.main.arn_suffix }
+  alarm_description   = "Per-turn p99 above 3x the ${var.pipeline_target} baseline (${local.baseline_turn_p99_ms} ms) for 3 of 5 minutes."
+  namespace           = "CollectionsChallenge"
+  metric_name         = "TurnLatencyMs"
+  dimensions          = { ServiceName = local.orchestrator_service_name }
   extended_statistic  = "p99"
   period              = 60
   evaluation_periods  = 5
   datapoints_to_alarm = 3
   comparison_operator = "GreaterThanThreshold"
-  threshold           = 3 * var.baseline_p99_ms / 1000
+  threshold           = 3 * local.baseline_turn_p99_ms
   treat_missing_data  = "notBreaching"
   alarm_actions       = [aws_sns_topic.alerts.arn]
   ok_actions          = [aws_sns_topic.alerts.arn]

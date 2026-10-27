@@ -31,6 +31,13 @@ export AUTO_APPROVE=1
     scripts/model_off.sh
   fi
   scripts/aws_destroy.sh
+  # Revisions registered outside Terraform (scripts/bluegreen_demo.sh) are not in its
+  # state, so destroy leaves them ACTIVE. They cost nothing, but the check below flags them.
+  for arn in $(aws ecs list-task-definitions --family-prefix "${PROJECT:-steadfast}-" \
+    --status ACTIVE --query 'taskDefinitionArns' --output text); do
+    echo "deregistering ${arn##*/}"
+    aws ecs deregister-task-definition --task-definition "$arn" >/dev/null
+  done
   echo "teardown finished $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 } 2>&1 | redact | tee results/teardown.log
 

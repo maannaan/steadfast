@@ -1,0 +1,170 @@
+[
+    {
+        "start": "2026-10-27T12:15:31.085000+05:30",
+        "end": "2026-10-27T12:16:06.316000+05:30",
+        "status": "Successful",
+        "what": "Setting desired count to 2.",
+        "why": "monitor alarm TargetTracking-service/steadfast/steadfast-orchestrator-AlarmLow-ed8cdd5a-4a70-4257-8dfe-dfbea2a8dbd3 in state ALARM triggered policy steadfast-inflight-per-task"
+    },
+    {
+        "start": "2026-10-27T12:09:31.041000+05:30",
+        "end": "2026-10-27T12:10:04.090000+05:30",
+        "status": "Successful",
+        "what": "Setting desired count to 3.",
+        "why": "monitor alarm TargetTracking-service/steadfast/steadfast-orchestrator-AlarmLow-ed8cdd5a-4a70-4257-8dfe-dfbea2a8dbd3 in state ALARM triggered policy steadfast-inflight-per-task"
+    },
+    {
+        "start": "2026-10-27T12:03:31.025000+05:30",
+        "end": "2026-10-27T12:04:02.135000+05:30",
+        "status": "Successful",
+        "what": "Setting desired count to 4.",
+        "why": "monitor alarm TargetTracking-service/steadfast/steadfast-orchestrator-AlarmLow-ed8cdd5a-4a70-4257-8dfe-dfbea2a8dbd3 in state ALARM triggered policy steadfast-inflight-per-task"
+    },
+    {
+        "start": "2026-10-27T11:57:31.047000+05:30",
+        "end": "2026-10-27T11:58:03.200000+05:30",
+        "status": "Successful",
+        "what": "Setting desired count to 5.",
+        "why": "monitor alarm TargetTracking-service/steadfast/steadfast-orchestrator-AlarmLow-ed8cdd5a-4a70-4257-8dfe-dfbea2a8dbd3 in state ALARM triggered policy steadfast-inflight-per-task"
+    },
+    {
+        "start": "2026-10-27T11:51:31.055000+05:30",
+        "end": "2026-10-27T11:52:07.101000+05:30",
+        "status": "Successful",
+        "what": "Setting desired count to 6.",
+        "why": "monitor alarm TargetTracking-service/steadfast/steadfast-orchestrator-AlarmLow-ed8cdd5a-4a70-4257-8dfe-dfbea2a8dbd3 in state ALARM triggered policy steadfast-inflight-per-task"
+    },
+    {
+        "start": "2026-10-27T11:21:34.943000+05:30",
+        "end": "2026-10-27T11:22:39.177000+05:30",
+        "status": "Successful",
+        "what": "Setting desired count to 7.",
+        "why": "monitor alarm TargetTracking-service/steadfast/steadfast-orchestrator-AlarmHigh-34500d10-f7a1-42aa-a778-5c94167999a7 in state ALARM triggered policy steadfast-inflight-per-task"
+    },
+    {
+        "start": "2026-10-27T11:20:34.901000+05:30",
+        "end": "2026-10-27T11:21:44.176000+05:30",
+        "status": "Successful",
+        "what": "Setting desired count to 6.",
+        "why": "monitor alarm TargetTracking-service/steadfast/steadfast-orchestrator-AlarmHigh-34500d10-f7a1-42aa-a778-5c94167999a7 in state ALARM triggered policy steadfast-inflight-per-task"
+    },
+    {
+        "start": "2026-10-27T10:39:33.284000+05:30",
+        "end": "2026-10-27T10:40:09.343000+05:30",
+        "status": "Successful",
+        "what": "Setting desired count to 2.",
+        "why": "monitor alarm TargetTracking-service/steadfast/steadfast-orchestrator-AlarmLow-7435b61a-3fa8-4bc1-a624-dd7660577ef7 in state ALARM triggered policy steadfast-inflight-per-task"
+    },
+    {
+        "start": "2026-10-27T10:33:33.306000+05:30",
+        "end": "2026-10-27T10:34:05.504000+05:30",
+        "status": "Successful",
+        "what": "Setting desired count to 3.",
+        "why": "monitor alarm TargetTracking-service/steadfast/steadfast-orchestrator-AlarmLow-7435b61a-3fa8-4bc1-a624-dd7660577ef7 in state ALARM triggered policy steadfast-inflight-per-task"
+    },
+    {
+        "start": "2026-10-27T10:27:33.290000+05:30",
+        "end": "2026-10-27T10:28:09.404000+05:30",
+        "status": "Successful",
+        "what": "Setting desired count to 4.",
+        "why": "monitor alarm TargetTracking-service/steadfast/steadfast-orchestrator-AlarmLow-7435b61a-3fa8-4bc1-a624-dd7660577ef7 in state ALARM triggered policy steadfast-inflight-per-task"
+    },
+    {
+        "start": "2026-10-27T10:21:33.283000+05:30",
+        "end": "2026-10-27T10:22:08.514000+05:30",
+        "status": "Successful",
+        "what": "Setting desired count to 5.",
+        "why": "monitor alarm TargetTracking-service/steadfast/steadfast-orchestrator-AlarmLow-7435b61a-3fa8-4bc1-a624-dd7660577ef7 in state ALARM triggered policy steadfast-inflight-per-task"
+    },
+    {
+        "start": "2026-10-27T10:15:33.293000+05:30",
+        "end": "2026-10-27T10:16:04.433000+05:30",
+        "status": "Successful",
+        "what": "Setting desired count to 6.",
+        "why": "monitor alarm TargetTracking-service/steadfast/steadfast-orchestrator-AlarmLow-7435b61a-3fa8-4bc1-a624-dd7660577ef7 in state ALARM triggered policy steadfast-inflight-per-task"
+    },
+    {
+        "start": "2026-10-27T10:09:33.329000+05:30",
+        "end": "2026-10-27T10:10:05.445000+05:30",
+        "status": "Successful",
+        "what": "Setting desired count to 7.",
+        "why": "monitor alarm TargetTracking-service/steadfast/steadfast-orchestrator-AlarmLow-7435b61a-3fa8-4bc1-a624-dd7660577ef7 in state ALARM triggered policy steadfast-inflight-per-task"
+    },
+    {
+        "start": "2026-10-27T09:53:55.699000+05:30",
+        "end": "2026-10-27T09:55:05.901000+05:30",
+        "status": "Successful",
+        "what": "Setting desired count to 8.",
+        "why": "monitor alarm TargetTracking-service/steadfast/steadfast-orchestrator-AlarmHigh-10e42b3b-013b-4836-8f12-059880974ec4 in state ALARM triggered policy steadfast-inflight-per-task"
+    },
+    {
+        "start": "2026-10-27T09:50:55.723000+05:30",
+        "end": "2026-10-27T09:52:00.003000+05:30",
+        "status": "Successful",
+        "what": "Setting desired count to 6.",
+        "why": "monitor alarm TargetTracking-service/steadfast/steadfast-orchestrator-AlarmHigh-10e42b3b-013b-4836-8f12-059880974ec4 in state ALARM triggered policy steadfast-inflight-per-task"
+    },
+    {
+        "start": "2026-10-26T22:27:05.444000+05:30",
+        "end": "2026-10-26T22:27:38.568000+05:30",
+        "status": "Successful",
+        "what": "Setting desired count to 2.",
+        "why": "monitor alarm TargetTracking-service/steadfast/steadfast-orchestrator-AlarmLow-16aab6ff-d115-4360-8282-d8f01d5c281b in state ALARM triggered policy steadfast-inflight-per-task"
+    },
+    {
+        "start": "2026-10-26T22:21:05.399000+05:30",
+        "end": "2026-10-26T22:21:41.520000+05:30",
+        "status": "Successful",
+        "what": "Setting desired count to 3.",
+        "why": "monitor alarm TargetTracking-service/steadfast/steadfast-orchestrator-AlarmLow-16aab6ff-d115-4360-8282-d8f01d5c281b in state ALARM triggered policy steadfast-inflight-per-task"
+    },
+    {
+        "start": "2026-10-26T22:15:05.461000+05:30",
+        "end": "2026-10-26T22:15:37.621000+05:30",
+        "status": "Successful",
+        "what": "Setting desired count to 4.",
+        "why": "monitor alarm TargetTracking-service/steadfast/steadfast-orchestrator-AlarmLow-16aab6ff-d115-4360-8282-d8f01d5c281b in state ALARM triggered policy steadfast-inflight-per-task"
+    },
+    {
+        "start": "2026-10-26T22:09:05.410000+05:30",
+        "end": "2026-10-26T22:09:39.552000+05:30",
+        "status": "Successful",
+        "what": "Setting desired count to 5.",
+        "why": "monitor alarm TargetTracking-service/steadfast/steadfast-orchestrator-AlarmLow-16aab6ff-d115-4360-8282-d8f01d5c281b in state ALARM triggered policy steadfast-inflight-per-task"
+    },
+    {
+        "start": "2026-10-26T22:03:05.429000+05:30",
+        "end": "2026-10-26T22:03:41.472000+05:30",
+        "status": "Successful",
+        "what": "Setting desired count to 6.",
+        "why": "monitor alarm TargetTracking-service/steadfast/steadfast-orchestrator-AlarmLow-16aab6ff-d115-4360-8282-d8f01d5c281b in state ALARM triggered policy steadfast-inflight-per-task"
+    },
+    {
+        "start": "2026-10-26T21:57:05.414000+05:30",
+        "end": "2026-10-26T21:57:40.479000+05:30",
+        "status": "Successful",
+        "what": "Setting desired count to 7.",
+        "why": "monitor alarm TargetTracking-service/steadfast/steadfast-orchestrator-AlarmLow-16aab6ff-d115-4360-8282-d8f01d5c281b in state ALARM triggered policy steadfast-inflight-per-task"
+    },
+    {
+        "start": "2026-10-26T21:32:20.383000+05:30",
+        "end": "2026-10-26T21:33:25.668000+05:30",
+        "status": "Successful",
+        "what": "Setting desired count to 8.",
+        "why": "monitor alarm TargetTracking-service/steadfast/steadfast-orchestrator-AlarmHigh-3ec0c863-331d-4c7e-a8b8-55c4d656152c in state ALARM triggered policy steadfast-inflight-per-task"
+    },
+    {
+        "start": "2026-10-26T21:29:20.409000+05:30",
+        "end": "2026-10-26T21:30:24.655000+05:30",
+        "status": "Successful",
+        "what": "Setting desired count to 6.",
+        "why": "monitor alarm TargetTracking-service/steadfast/steadfast-orchestrator-AlarmHigh-3ec0c863-331d-4c7e-a8b8-55c4d656152c in state ALARM triggered policy steadfast-inflight-per-task"
+    },
+    {
+        "start": "2026-10-26T21:28:20.396000+05:30",
+        "end": "2026-10-26T21:29:25.707000+05:30",
+        "status": "Successful",
+        "what": "Setting desired count to 5.",
+        "why": "monitor alarm TargetTracking-service/steadfast/steadfast-orchestrator-AlarmHigh-3ec0c863-331d-4c7e-a8b8-55c4d656152c in state ALARM triggered policy steadfast-inflight-per-task"
+    }
+]

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Steadfast: Zero Unaccounted Collections Calls</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 12mm 15mm 12mm 15mm;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #1a202c;
+      line-height: 1.45;
+      font-size: 11pt;
+      margin: 0;
+      padding: 0;
+    }
+    h1 {
+      font-size: 18pt;
+      margin: 0 0 4px 0;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+    }
+    .subtitle {
+      font-size: 11pt;
+      font-weight: 600;
+      color: #2563eb;
+      margin-bottom: 2px;
+    }
+    .meta {
+      font-size: 9pt;
+      color: #64748b;
+      margin-bottom: 12px;
+    }
+    hr {
+      border: 0;
+      height: 1px;
+      background: #e2e8f0;
+      margin: 10px 0;
+    }
+    h2 {
+      font-size: 12pt;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #1e293b;
+      border-bottom: 1.5px solid #0284c7;
+      padding-bottom: 3px;
+      margin: 14px 0 8px 0;
+    }
+    p {
+      margin: 0 0 8px 0;
+      text-align: justify;
+    }
+    ul {
+      margin: 0 0 10px 0;
+      padding-left: 18px;
+    }
+    li {
+      margin-bottom: 4px;
+    }
+    pre {
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-size: 8.5pt;
+      line-height: 1.25;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      overflow-x: auto;
+      margin: 8px 0 12px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9pt;
+      margin: 10px 0 14px 0;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 5px 8px;
+      text-align: left;
+    }
+    th {
+      background: #f1f5f9;
+      font-weight: 600;
+      color: #334155;
+    }
+    tr:nth-child(even) td {
+      background: #f8fafc;
+    }
+    .badge {
+      display: inline-block;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 8pt;
+      font-weight: 600;
+      background: #dbeafe;
+      color: #1e40af;
+    }
+    .pass {
+      color: #15803d;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Steadfast: Zero Unaccounted Collections Calls</h1>
+  <div class="subtitle">Predixion AI × TalentX Open-Weight Collections Agent Challenge (AWS FDE Track)</div>
+  <div class="meta">
+    Architecture, Resilience Engineering & Production Deployment on AWS ap-south-1 &nbsp;|&nbsp; 
+    <strong>Repository:</strong> https://github.com/maannaan/steadfast (Apache-2.0)
+  </div>
+
+  <hr>
+
+  <h2>Executive Summary</h2>
+  <p>
+    In digital lending operations governed by Reserve Bank of India (RBI) regulations, an unlogged collections call is an audit failure and a compliance violation. Yet conversational voice pipelines chaining Speech-to-Text (STT), Large Language Models (LLM), and Text-to-Speech (TTS) inherently face unpredictable latency, high concurrency, and downstream failure rates of 20% or more. 
+    <strong>Steadfast</strong> is a carrier-grade inference orchestration service built to enforce a singular guarantee: <strong>zero unaccounted calls</strong>. Every borrower interaction ends deterministically in the <strong>call log</strong> (with full telemetry and business outcome) or in the <strong>dead-letter queue (DLQ)</strong> (with structured error reasons, ready for automated replay). No call is ever silently dropped.
+  </p>
+
+  <h2>System Architecture (AWS ap-south-1)</h2>
+  <pre>
+   Borrower / PBX           Application Load Balancer (HTTPS + x-steadfast-key)
+         │                                       │
+         ▼                                       ▼
+   POST /calls ────────► [ Blue / Green Native ECS Fargate Orchestrator ]
+                              │ (In-Flight Calls Target Tracking: 2 -> 8 tasks)
+                              │
+               ┌──────────────┴──────────────┐
+               ▼                             ▼
+       [ Circuit Breaker ]           [ SQS DLQ + DynamoDB Index ]
+       (100-attempt window)          (Encrypted at rest, 14-day retention)
+               │                                    │
+               ▼ (ECS Service Connect)              ▼
+       [ Model Tier on EC2 ]                [ Replay Worker ]
+       - faster-whisper (STT)               (Idempotent by event_id,
+       - Qwen2.5 (LLM)                      gated to 08:00-19:00 IST)
+       - Piper (TTS, CPU/GPU)                       │
+               │                                    │
+               ▼                                    ▼
+   [ DynamoDB Call Log ] ◄──────────────────────────┘
+   (Persist-before-ack, PITR enabled)
+  </pre>
+
+  <ul>
+    <li><strong>Persist-Before-Ack & Idempotency:</strong> Calls are keyed by deterministic <code>event_id</code>. HTTP 200 is issued only after state persistence (DynamoDB on AWS, SQLite with <code>synchronous=FULL</code> locally). Downstream failures return HTTP 200 with recorded DLQ status; HTTP 500 is reserved exclusively for unrecordable errors so clients know to resend.</li>
+    <li><strong>Full-Jitter Exponential Backoff:</strong> 3 attempts with full jitter (0.2 s base, 2.0 s cap), bounded by a 2.5 s attempt timeout and an 8.0 s call deadline. A rolling 100-attempt per-task circuit breaker trips at 50% failure, failing fast into the DLQ.</li>
+    <li><strong>Target Tracking on In-Flight Calls:</strong> Scaled on <code>InFlightCalls</code> per task (target: 20 calls/task) via Little's Law, published using CloudWatch Embedded Metric Format (EMF) logs without <code>PutMetricData</code> API charges.</li>
+    <li><strong>Zero-Downtime Blue/Green & Multi-AZ:</strong> Production traffic shifts over a 2-minute bake period with header-based pre-verification (<code>X-Deploy-Test: 1</code>) and automatic alarm rollbacks. Tasks are balanced across Availability Zones with clean draining.</li>
+    <li><strong>RBI & DPDP Act Compliance:</strong> 100% data residency in Mumbai (<code>ap-south-1</code>), zero PII in log streams, and strict campaign calling window gating (<code>08:00–19:00 IST</code>) for both real-time traffic and DLQ replay workers.</li>
+  </ul>
+
+  <h2>Empirical Validation & Test Results</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Test Scenario</th>
+        <th>Volume / Speed</th>
+        <th>Injected Conditions</th>
+        <th>Outcome & Scalability</th>
+        <th>Unaccounted</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Local Independent</strong></td>
+        <td>6,083 calls (60×)</td>
+        <td>20% random downstream 503s</td>
+        <td>4,876 1st-try, 1,163 retried, 44 DLQ</td>
+        <td><span class="pass">0</span></td>
+      </tr>
+      <tr>
+        <td><strong>Local Outage Burst</strong></td>
+        <td>6,083 calls (60×)</td>
+        <td>15s outage every 60s (4 trips)</td>
+        <td>3,161 1st-try, 725 retried, 2,197 DLQ</td>
+        <td><span class="pass">0</span></td>
+      </tr>
+      <tr>
+        <td><strong>AWS Campaign Window</strong></td>
+        <td>6,083 calls (6×)</td>
+        <td>6-turn calls, 20% faults, autoscaling</td>
+        <td>Tasks scaled 2 → 8 → 2; DLQ drained clean</td>
+        <td><span class="pass">0</span></td>
+      </tr>
+      <tr>
+        <td><strong>AWS Multi-AZ Drill</strong></td>
+        <td>Live campaign</td>
+        <td>Terminated all tasks in AZ-a</td>
+        <td>AZ-b absorbed load, 0 client errors</td>
+        <td><span class="pass">0</span></td>
+      </tr>
+      <tr>
+        <td><strong>AWS Blue/Green Shift</strong></td>
+        <td>Live campaign</td>
+        <td>Good shift vs. bad tag rollback</td>
+        <td>Green tested; broken tag rolled back auto</td>
+        <td><span class="pass">0</span></td>
+      </tr>
+      <tr>
+        <td><strong>Open-Weight CPU Tier</strong></td>
+        <td>1,037 calls (1×)</td>
+        <td>4× overload on Whisper+Qwen+Piper</td>
+        <td>Fast 429 shedding directly to DLQ</td>
+        <td><span class="pass">0</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Cost Economics & Infrastructure Efficiency</h2>
+  <ul>
+    <li><strong>Measured Session Cost:</strong> <strong>$2.70 total</strong> on AWS <code>ap-south-1</code> via Cost Explorer receipts (Fargate: $0.88; NAT Gateway: $0.86; EC2 model host: $0.47; ALB: $0.31; VPC/IP: $0.16; DynamoDB/SQS: $0.02; CloudWatch EMF: &lt; $0.01).</li>
+    <li><strong>Budget Cap Compliance:</strong> Spent less than 10% of the ₹2,500 (~$30.00) challenge reimbursement limit.</li>
+    <li><strong>Unit Cost:</strong> <strong>~$0.000074 per call</strong> (~6.2 paise per 100 calls) during peak autoscaling load.</li>
+    <li><strong>Programmatic Teardown Verification:</strong> <code>scripts/teardown.sh</code> queries AWS APIs directly for all tagged resources at session completion: <span class="pass">RESULT: PASS</span>.</li>
+  </ul>
+
+</body>
+</html>

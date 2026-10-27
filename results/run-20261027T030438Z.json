@@ -1,0 +1,48 @@
+{
+  "label": "independent",
+  "run_file": "run-20261027T030438Z.jsonl",
+  "config": {
+    "speed": 60.0,
+    "start": "07:45",
+    "duration_hours": 2.5,
+    "seed": 42
+  },
+  "real_duration_s": 150.8,
+  "sent": 6083,
+  "succeeded_first_try": 3440,
+  "succeeded_after_retry": 892,
+  "failed_downstream": 1751,
+  "dlq_reasons": {
+    "retries_exhausted": 39,
+    "circuit_open": 1712
+  },
+  "dlq_count": 1751,
+  "dlq_rate_pct": 28.79,
+  "latency_ms": {
+    "p50": 433.0,
+    "p95": 1756.0,
+    "p99": 3903.0
+  },
+  "breaker_transitions": {
+    "closed->open": 2.0,
+    "half_open->closed": 2.0,
+    "half_open->open": 1.0,
+    "open->half_open": 3.0
+  },
+  "breaker_opens": 3.0,
+  "http_errors": 0,
+  "unaccounted": 0,
+  "unaccounted_sample": [],
+  "service_stats_after": {
+    "received": 18252,
+    "succeeded_first_try": 10352,
+    "succeeded_after_retry": 2741,
+    "failed_downstream": 5159,
+    "dlq_pending": 5159,
+    "dlq_replayed": 2109,
+    "dlq_replay_failed": 0,
+    "dlq_total": 7268,
+    "breaker_state": "closed",
+    "in_flight": 0.0
+  }
+}

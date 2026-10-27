@@ -1,0 +1,56 @@
+{
+ "label": "demo",
+ "start": "2026-10-25",
+ "end_exclusive": "2026-10-28",
+ "generated_at": "2026-10-27T07:24:45+00:00",
+ "tagged": {
+  "filter": "Project=steadfast",
+  "total_usd": 0,
+  "by_day": {},
+  "by_service": {}
+ },
+ "estimate": {
+  "region": "ap-south-1",
+  "excluded_usage_types": [
+   "BoxUsage:t3.small",
+   "EBS:VolumeUsage"
+  ],
+  "ipv4_hours_per_day_subtracted": 24.0,
+  "total_usd": 2.6979,
+  "by_day": {
+   "2026-10-25": 0.0001,
+   "2026-10-26": 2.6978
+  },
+  "by_service": {
+   "Amazon Elastic Container Service": 0.875,
+   "EC2 - Other": 0.8613,
+   "Amazon Elastic Compute Cloud - Compute": 0.4728,
+   "Amazon Elastic Load Balancing": 0.3113,
+   "Amazon Virtual Private Cloud": 0.1597,
+   "Amazon DynamoDB": 0.0139,
+   "AmazonCloudWatch": 0.0019,
+   "Amazon Simple Storage Service": 0.0015,
+   "Amazon EC2 Container Registry (ECR)": 0.0004
+  },
+  "by_usage_type": {
+   "APS3-NatGateway-Hours": 0.728,
+   "APS3-Fargate-vCPU-Hours:perCPU": 0.718,
+   "APS3-BoxUsage:c7i.xlarge": 0.4528,
+   "APS3-LoadBalancerUsage": 0.3107,
+   "APS3-PublicIPv4:InUseAddress": 0.1592,
+   "APS3-Fargate-GB-Hours": 0.1571,
+   "APS3-NatGateway-Bytes": 0.1326,
+   "APS3-BoxUsage:c7i.large": 0.02,
+   "APS3-WriteRequestUnits": 0.0091,
+   "APS3-ReadRequestUnits": 0.0048,
+   "APS3-Requests-Tier1": 0.0013,
+   "APS3-CW:GMWI-Metrics": 0.0012,
+   "APS3-CW:GMD-Metrics": 0.0008,
+   "APS3-DataTransfer-Regional-Bytes": 0.0007,
+   "APS3-PublicIPv4:IdleAddress": 0.0006,
+   "APS3-LCUUsage": 0.0006,
+   "APS3-TimedStorage-ByteHrs": 0.0004,
+   "APS3-Requests-Tier2": 0.0003
+  }
+ }
+}

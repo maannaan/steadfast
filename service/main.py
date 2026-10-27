@@ -131,8 +131,9 @@ def create_app(
 
     @app.get("/health")
     async def health() -> dict[str, str]:
-        """Liveness: the process is up and serving HTTP."""
-        return {"status": "ok"}
+        """Liveness: the process is up and serving HTTP. `version` tells a blue/green test
+        request which revision answered it."""
+        return {"status": "ok", "version": settings.service_version}
 
     @app.get("/ready")
     async def ready(request: Request) -> JSONResponse:
@@ -177,6 +178,7 @@ def create_app(
             event_ids=body.event_ids,
             replay_all=body.all,
             rate_per_s=body.rate_per_s,
+            window=state.settings.calling_window,
         )
         return asdict(summary)
 

@@ -213,7 +213,7 @@ async def test_api_dlq_replay_and_stats(tmp_path) -> None:
         assert "steadfast_breaker_state 0" in metrics
         assert 'steadfast_replays_total{result="replayed"} 1' in metrics
 
-        assert (await client.get("/health")).status_code == 200
+        assert (await client.get("/health")).json() == {"status": "ok", "version": "dev"}
         assert (await client.get("/ready")).json() == {
             "call_log_writable": True,
             "pipeline_client": True,

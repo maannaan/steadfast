@@ -1,0 +1,6 @@
+# Demo video tooling (demo/), not needed to run or test the service.
+# Also needs: ffmpeg/ffprobe on PATH, and Docker (Piper TTS and the transcript check run in
+# Linux containers). Browsers: .venv/bin/python -m playwright install chromium
+-r requirements-dev.txt
+playwright==1.64.1   # Apache-2.0
+PyYAML==6.0.3        # MIT

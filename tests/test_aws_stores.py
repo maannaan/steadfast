@@ -8,6 +8,7 @@ credentials; nothing here can reach AWS.
 import asyncio
 import json
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 import boto3
 import httpx
@@ -16,12 +17,13 @@ from botocore.exceptions import ReadTimeoutError
 from moto import mock_aws
 
 from service.aws_io import AwsIO
+from service.calling_window import CallingWindow
 from service.config import Settings
 from service.main import create_app
 from service.metrics import Metrics
 from service.models import Outcome
 from service.replay import replay_dead_letters
-from service.replay_worker import WorkerStats, run_worker, run_workers
+from service.replay_worker import WorkerStats, _process_batch, run_worker, run_workers
 from service.resilience.breaker import CircuitBreaker
 from service.resilience.executor import CallExecutor
 from service.resilience.retry import RetryPolicy
@@ -239,6 +241,56 @@ async def test_worker_keeps_messages_while_dependency_is_down(
         QueueUrl=aws.queue_url, AttributeNames=["ApproximateNumberOfMessagesNotVisible"]
     )
     assert attrs["Attributes"]["ApproximateNumberOfMessagesNotVisible"] == "1"
+
+
+async def test_worker_leaves_queue_alone_outside_calling_window(
+    aws: AwsEnv, clock: FakeClock
+) -> None:
+    failing = executor(aws, FakePipeline(default=r503()), clock)
+    await failing.handle_call(make_event("e1"))
+    recovered = FakePipeline()
+
+    stats = await run_worker(
+        executor(aws, recovered, clock),
+        aws.dlq(),
+        Metrics(),
+        rate_per_s=1000,
+        stop=asyncio.Event(),
+        exit_when_empty=True,
+        wait_s=0,
+        window=CallingWindow.parse("08:00-19:00+05:30"),
+        now=lambda: datetime(2026, 10, 27, 16, 0, tzinfo=UTC),  # 21:30 IST
+        sleep=clock.sleep,
+    )
+    assert stats.batches == 0 and recovered.calls == []
+    assert aws.queue_depth() == 1  # never received, so still visible
+
+
+async def test_batch_received_as_the_window_closes_is_released(
+    aws: AwsEnv, clock: FakeClock
+) -> None:
+    sqs = boto3.client("sqs", region_name=REGION)
+    payload = make_event("orphan").model_dump(mode="json", exclude_none=True)
+    body = json.dumps({"event_id": "orphan", "reason": "x", "payload": payload})
+    sqs.send_message(QueueUrl=aws.queue_url, MessageBody=body)
+    dlq = aws.dlq()
+    messages = await dlq.receive(wait_s=0)
+    recovered = FakePipeline()
+    stats = WorkerStats()
+
+    await _process_batch(
+        executor(aws, recovered, clock),
+        dlq,
+        Metrics(),
+        messages,
+        1000,
+        stats,
+        CallingWindow.parse("08:00-19:00+05:30"),
+        lambda: datetime(2026, 10, 27, 16, 0, tzinfo=UTC),  # 21:30 IST
+    )
+    assert recovered.calls == []  # not even replayed from the payload
+    assert stats.released == 1
+    assert aws.queue_depth() == 1
 
 
 async def test_worker_replays_orphan_message_and_dedupes(aws: AwsEnv, clock: FakeClock) -> None:

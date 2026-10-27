@@ -72,7 +72,42 @@ resource "aws_lb_listener" "https" {
   }
 }
 
+# Production rule. During a blue/green deployment ECS rewrites the weights of this forward
+# action (blue 100 -> green 100), so Terraform ignores changes to it after creation.
 resource "aws_lb_listener_rule" "with_key" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 2
+
+  condition {
+    http_header {
+      http_header_name = local.access_key_header
+      values           = [random_password.access_key.result]
+    }
+  }
+
+  action {
+    type = "forward"
+    forward {
+      target_group {
+        arn    = aws_lb_target_group.orchestrator["blue"].arn
+        weight = 100
+      }
+      target_group {
+        arn    = aws_lb_target_group.orchestrator["green"].arn
+        weight = 0
+      }
+    }
+  }
+
+  lifecycle {
+    ignore_changes = [action]
+  }
+}
+
+# Test rule: a request with the key AND x-steadfast-green: 1 reaches the green revision
+# while it is still being validated, before any production traffic moves. Outside a
+# deployment it reaches the live revision like any keyed request.
+resource "aws_lb_listener_rule" "green_test" {
   listener_arn = aws_lb_listener.https.arn
   priority     = 1
 
@@ -83,9 +118,29 @@ resource "aws_lb_listener_rule" "with_key" {
     }
   }
 
+  condition {
+    http_header {
+      http_header_name = "x-steadfast-green"
+      values           = ["1"]
+    }
+  }
+
   action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.orchestrator.arn
+    type = "forward"
+    forward {
+      target_group {
+        arn    = aws_lb_target_group.orchestrator["blue"].arn
+        weight = 100
+      }
+      target_group {
+        arn    = aws_lb_target_group.orchestrator["green"].arn
+        weight = 0
+      }
+    }
+  }
+
+  lifecycle {
+    ignore_changes = [action]
   }
 }
 
@@ -125,7 +180,7 @@ resource "aws_lb_listener_rule" "cloudfront_with_key" {
 
   action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.orchestrator.arn
+    target_group_arn = aws_lb_target_group.orchestrator["blue"].arn
   }
 }
 

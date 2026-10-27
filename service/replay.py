@@ -11,10 +11,13 @@ just recovered; flooding it with the whole backlog at once could knock it over a
 
 import asyncio
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 
 from pydantic import ValidationError
 
+from service.calling_window import CallingWindow
 from service.logging_setup import log_event
 from service.metrics import Metrics
 from service.models import CallEvent, Outcome
@@ -36,6 +39,8 @@ class ReplaySummary:
     skipped_already_replayed: int = 0
     # Not attempted because a probe showed the dependency still failing; still pending.
     aborted: int = 0
+    # Not attempted because it is outside the calling window; still pending.
+    deferred: int = 0
     missing: list[str] = field(default_factory=list)
 
 
@@ -48,9 +53,15 @@ async def replay_dead_letters(
     replay_all: bool = False,
     rate_per_s: float = 5.0,
     limit: int = 10_000,
+    window: CallingWindow | None = None,
+    now: Callable[[], datetime] = lambda: datetime.now(UTC),
     sleep: Sleep = asyncio.sleep,
 ) -> ReplaySummary:
-    """Replay specific event_ids, or every entry not yet replayed (pending + replay_failed)."""
+    """Replay specific event_ids, or every entry not yet replayed (pending + replay_failed).
+
+    Outside the calling window nothing is replayed: every entry stays as it is and is
+    counted as deferred, so a later run inside the window picks it up.
+    """
     if replay_all:
         entries = await dlq.list(status="pending", limit=limit)
         entries += await dlq.list(status="replay_failed", limit=limit)
@@ -59,6 +70,15 @@ async def replay_dead_letters(
         ids = list(dict.fromkeys(event_ids or []))  # de-duplicate, keep order
 
     summary = ReplaySummary(requested=len(ids))
+    if window is not None and not window.is_open(now()):
+        summary.deferred = len(ids)
+        log_event(
+            log,
+            "replay_deferred",
+            deferred=summary.deferred,
+            opens_in_s=round(window.seconds_until_open(now())),
+        )
+        return summary
 
     async def replay_one(event_id: str) -> None:
         entry = await dlq.get(event_id)

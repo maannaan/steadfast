@@ -104,6 +104,78 @@ resource "aws_iam_role_policy" "orchestrator_task" {
   policy = data.aws_iam_policy_document.orchestrator_task.json
 }
 
+# ---------- ECS infrastructure role for blue/green ----------
+# Assumed by ECS itself (not by a task) to move traffic between the blue and green target
+# groups. Same actions as the AWS managed AmazonECSInfrastructureRolePolicyForLoadBalancers,
+# but that policy allows them on every load balancer in the account (arn ...:*:*:...);
+# here the mutating ones are limited to this stack's listener, rules and target groups.
+
+data "aws_iam_policy_document" "ecs_assume" {
+  statement {
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["ecs.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+  }
+}
+
+resource "aws_iam_role" "ecs_load_balancers" {
+  name               = "${var.name}-ecs-load-balancers"
+  assume_role_policy = data.aws_iam_policy_document.ecs_assume.json
+}
+
+data "aws_iam_policy_document" "ecs_load_balancers" {
+  # Elastic Load Balancing Describe* actions do not support resource-level permissions:
+  # AWS only accepts Resource "*" for them, and they have no condition keys to narrow
+  # them. They are read-only.
+  statement {
+    sid = "ReadLoadBalancerConfig"
+    actions = [
+      "elasticloadbalancing:DescribeListeners",
+      "elasticloadbalancing:DescribeRules",
+      "elasticloadbalancing:DescribeTargetGroups",
+      "elasticloadbalancing:DescribeTargetHealth",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid = "ShiftTrafficOnOurRules"
+    actions = [
+      "elasticloadbalancing:ModifyListener",
+      "elasticloadbalancing:ModifyRule",
+    ]
+    resources = [
+      aws_lb_listener.https.arn,
+      aws_lb_listener_rule.with_key.arn,
+      aws_lb_listener_rule.green_test.arn,
+    ]
+  }
+
+  statement {
+    sid = "RegisterOurTargets"
+    actions = [
+      "elasticloadbalancing:RegisterTargets",
+      "elasticloadbalancing:DeregisterTargets",
+    ]
+    resources = [for tg in aws_lb_target_group.orchestrator : tg.arn]
+  }
+}
+
+resource "aws_iam_role_policy" "ecs_load_balancers" {
+  name   = "blue-green-traffic-shift"
+  role   = aws_iam_role.ecs_load_balancers.id
+  policy = data.aws_iam_policy_document.ecs_load_balancers.json
+}
+
 # ---------- model task role ----------
 
 resource "aws_iam_role" "model_task" {

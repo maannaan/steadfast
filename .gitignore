@@ -5,6 +5,7 @@
 
 # Challenge brief is Predixion's document, not ours to publish
 *.pdf
+!docs/ONE_PAGER.pdf
 
 # Runtime data
 data/
@@ -29,6 +30,11 @@ __pycache__/
 !*.tfvars.example
 crash.log
 infra/*.pem
+
+# Demo video tooling: downloaded binaries, raw captures and rendered output
+demo/.tools/
+demo/captures/
+demo/out/
 
 # OS / editors
 .DS_Store

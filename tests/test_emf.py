@@ -30,7 +30,10 @@ def assert_valid_emf(line: dict) -> None:
         for d in dims:
             assert isinstance(line[d], str)
     for metric in directive["Metrics"]:
-        assert isinstance(line[metric["Name"]], int | float)
+        value = line[metric["Name"]]
+        values = value if isinstance(value, list) else [value]
+        assert values and len(values) <= 100
+        assert all(isinstance(v, int | float) for v in values)
 
 
 def test_call_fields_shape() -> None:
@@ -42,6 +45,50 @@ def test_call_fields_shape() -> None:
     assert fields["_aws"]["CloudWatchMetrics"][0]["Dimensions"] == [["ServiceName"]]
     assert (fields["Calls"], fields["Retries"], fields["DLQEnqueued"]) == (1, 2, 1)
     assert "TaskId" not in fields  # per-task dimensions only on gauges (metric cost)
+    assert "TurnLatencyMs" not in fields  # declared only when there are values
+
+
+def test_turn_latency_is_an_array_metric() -> None:
+    fields = EmfEmitter("svc", "task1").call_fields(
+        retries=0, downstream_errors=0, dlq=False, latency_ms=900, turn_latency_ms=[300, 600]
+    )
+    assert_valid_emf(fields)
+    names = [m["Name"] for m in fields["_aws"]["CloudWatchMetrics"][0]["Metrics"]]
+    assert "TurnLatencyMs" in names
+    assert fields["TurnLatencyMs"] == [300, 600]
+
+
+async def test_turn_latency_excludes_turn_gap_but_includes_backoff(
+    db: Database, clock: FakeClock, caplog: pytest.LogCaptureFixture
+) -> None:
+    def slow_ok() -> object:
+        clock.advance(0.3)
+        return OK
+
+    executor = CallExecutor(
+        pipeline=FakePipeline([slow_ok, r503, slow_ok]),
+        breaker=CircuitBreaker(clock=clock),
+        call_log=SqliteCallLog(db),
+        dlq=SqliteDLQ(db),
+        metrics=Metrics(),
+        policy=RetryPolicy(base_s=0.2, cap_s=0.2),
+        turns_per_call=2,
+        turn_gap_s=5.0,
+        emf=EmfEmitter("steadfast-orchestrator", "t1"),
+        sleep=clock.sleep,
+        clock=clock,
+        rng=random.Random(0),
+    )
+    with caplog.at_level(logging.INFO, logger="steadfast.calls"):
+        result = await executor.handle_call(make_event())
+    (record,) = [r for r in caplog.records if r.getMessage() == "call"]
+    line = json.loads(JsonFormatter().format(record))
+    first, second = line["TurnLatencyMs"]
+    backoff_ms = round(sum(clock.sleeps[1:]) * 1000)  # sleeps[0] is the 5 s turn gap
+    assert clock.sleeps[0] == 5.0
+    assert first == 300
+    assert second == 300 + backoff_ms
+    assert result.latency_ms == first + 5000 + second
 
 
 def test_gauge_fields_have_task_dimension() -> None:

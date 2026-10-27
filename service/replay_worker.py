@@ -17,6 +17,8 @@ breaker gating are exactly those of the /dlq/replay endpoint. Then, per message:
   off before polling again;
 - no index entry (the index write failed after the send) -> replay from the payload the
   message carries; the executor records the outcome either way, so delete.
+
+Outside REPLAY_CALLING_WINDOW it does not receive at all, so messages stay in the queue.
 """
 
 import argparse
@@ -25,10 +27,12 @@ import logging
 import signal
 from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
 from typing import Any
 
 from botocore.exceptions import BotoCoreError, ClientError
 
+from service.calling_window import CallingWindow
 from service.config import Settings
 from service.logging_setup import configure_logging, log_event
 from service.metrics import Metrics
@@ -41,6 +45,7 @@ from service.store.sqs_dlq import QueuedEvent, SqsDLQ
 log = logging.getLogger("steadfast.replay_worker")
 
 BACKOFF_S = 30.0  # after a probe showed the dependency still down
+WINDOW_POLL_S = 60.0  # re-check the calling window (and the stop signal) this often
 
 
 @dataclass
@@ -62,17 +67,30 @@ async def run_worker(
     stop: asyncio.Event,
     exit_when_empty: bool = False,
     wait_s: int = 20,
+    window: CallingWindow | None = None,
+    now: Callable[[], datetime] = lambda: datetime.now(UTC),
     sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
 ) -> WorkerStats:
     stats = WorkerStats()
     while not stop.is_set():
+        if window is not None and not window.is_open(now()):
+            # Outside calling hours: leave messages in the queue untouched. A one-shot
+            # run stops here; the long-running service waits for the window to open.
+            opens_in = window.seconds_until_open(now())
+            log_event(log, "replay_deferred", opens_in_s=round(opens_in))
+            if exit_when_empty:
+                break
+            await sleep(min(opens_in, WINDOW_POLL_S))
+            continue
         try:
             messages = await dlq.receive(wait_s=wait_s)
             if not messages:
                 if exit_when_empty:
                     break
                 continue
-            aborted = await _process_batch(executor, dlq, metrics, messages, rate_per_s, stats)
+            aborted = await _process_batch(
+                executor, dlq, metrics, messages, rate_per_s, stats, window, now
+            )
         except (BotoCoreError, ClientError) as exc:
             # Transient AWS trouble (timeouts, throttling). Nothing is lost: undeleted
             # messages reappear after the visibility timeout, and replaying an event
@@ -122,9 +140,12 @@ async def _process_batch(
     messages: list[QueuedEvent],
     rate_per_s: float,
     stats: WorkerStats,
+    window: CallingWindow | None = None,
+    now: Callable[[], datetime] = lambda: datetime.now(UTC),
 ) -> bool:
     """Replay one received batch and settle each message. Returns whether the replay was
-    aborted because the dependency is still down."""
+    aborted because the dependency is still down. If the window closed after the receive,
+    the entries stay pending and their messages are released."""
     stats.batches += 1
     first: dict[str, QueuedEvent] = {}
     for message in messages:
@@ -135,8 +156,19 @@ async def _process_batch(
             first[message.event_id] = message
 
     summary = await replay_dead_letters(
-        executor, dlq, metrics, event_ids=list(first), rate_per_s=rate_per_s
+        executor,
+        dlq,
+        metrics,
+        event_ids=list(first),
+        rate_per_s=rate_per_s,
+        window=window,
+        now=now,
     )
+    if summary.deferred:
+        for message in first.values():
+            await dlq.release(message)
+            stats.released += 1
+        return False
     for event_id, message in first.items():
         entry = await dlq.get(event_id)
         if entry is None:
@@ -196,6 +228,7 @@ async def _main(exit_when_empty: bool) -> int:
             rate_per_s=settings.replay_rate_per_s,
             stop=stop,
             exit_when_empty=exit_when_empty,
+            window=settings.calling_window,
         )
         await rt.executor.drain(settings.shutdown_drain_s)
     log_event(log, "replay_worker_stopped", **asdict(stats))

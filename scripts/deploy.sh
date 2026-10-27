@@ -28,5 +28,14 @@ echo "waiting for the services to become stable..."
 cluster="$(terraform -chdir=infra output -raw cluster_name)"
 service="$(terraform -chdir=infra output -raw orchestrator_service)"
 aws ecs wait services-stable --cluster "$cluster" --services "$service"
+# Blue/green: "stable" can be reported while traffic is still moving to the new target
+# group, so also wait for the latest deployment to finish.
+for _ in $(seq 1 90); do
+  status="$(aws ecs list-service-deployments --cluster "$cluster" --service "$service" \
+    --query 'serviceDeployments[0].status' --output text)"
+  [[ "$status" == "IN_PROGRESS" || "$status" == "PENDING" ]] || break
+  sleep 10
+done
+echo "deployment: ${status}"
 echo "ready: $(terraform -chdir=infra output -raw service_url)"
 echo "access key: terraform -chdir=infra output -raw access_key"

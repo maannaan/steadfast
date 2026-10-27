@@ -42,7 +42,14 @@ class ProcessRequest(BaseModel):
     audio_ref: str = "synthetic"
 
 
-def error(status: int, reason: str) -> JSONResponse:
+def error(status: int, reason: str, event_id: str) -> JSONResponse:
+    """Every non-200 is logged with its event_id, so a model-side rejection can be matched
+    to the orchestrator's retry or DLQ record for the same call."""
+    log.warning(
+        json.dumps(
+            {"event": "model_rejected", "event_id": event_id, "status": status, "reason": reason}
+        )
+    )
     return JSONResponse(status_code=status, content={"status": "error", "reason": reason})
 
 
@@ -148,11 +155,11 @@ def create_app(
     @app.post("/pipeline/process")
     async def process(body: ProcessRequest, request: Request) -> JSONResponse:
         if not engine.ready:
-            return error(503, "warming_up")
+            return error(503, "warming_up", body.event_id)
         if rng.random() < settings.fault_rate:
-            return error(503, "downstream_timeout")
+            return error(503, "downstream_timeout", body.event_id)
         if engine.waiting >= settings.max_queue + settings.max_concurrency:
-            return error(429, "overloaded")
+            return error(429, "overloaded", body.event_id)
 
         started = time.perf_counter()
         engine.waiting += 1
@@ -160,21 +167,21 @@ def create_app(
             try:
                 await asyncio.wait_for(engine.slots.acquire(), settings.queue_timeout_s)
             except TimeoutError:
-                return error(503, "queue_timeout")
+                return error(503, "queue_timeout", body.event_id)
             queue_ms = round((time.perf_counter() - started) * 1000)
             try:
                 wav = engine.sample_for(body.event_id, body.audio_ref)
                 turn = await asyncio.to_thread(engine.run_turn, wav)
             except Exception as exc:
                 log.exception("inference failed for %s", body.event_id)
-                return error(503, f"model_error:{type(exc).__name__}")
+                return error(503, f"model_error:{type(exc).__name__}", body.event_id)
             finally:
                 engine.slots.release()
         finally:
             engine.waiting -= 1
 
         if not turn["transcript"]:
-            return error(422, "empty_transcript")
+            return error(422, "empty_transcript", body.event_id)
         latency_ms = round((time.perf_counter() - started) * 1000)
         turn["stage_ms"]["queue"] = queue_ms
         log.info(

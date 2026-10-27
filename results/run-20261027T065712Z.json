@@ -1,0 +1,42 @@
+{
+  "label": "az-drill",
+  "run_file": "run-20261027T065712Z.jsonl",
+  "config": {
+    "speed": 6.0,
+    "start": "08:30",
+    "duration_hours": 0.35,
+    "seed": 11
+  },
+  "real_duration_s": 239.1,
+  "sent": 1015,
+  "succeeded_first_try": 285,
+  "succeeded_after_retry": 679,
+  "failed_downstream": 51,
+  "dlq_reasons": {
+    "retries_exhausted": 51
+  },
+  "dlq_count": 51,
+  "dlq_rate_pct": 5.02,
+  "latency_ms": {
+    "p50": 27449.0,
+    "p95": 29065.0,
+    "p99": 29931.0
+  },
+  "breaker_transitions": null,
+  "breaker_opens": null,
+  "http_errors": 0,
+  "unaccounted": 0,
+  "unaccounted_sample": [],
+  "service_stats_after": {
+    "received": 7099,
+    "succeeded_first_try": 2033,
+    "succeeded_after_retry": 5015,
+    "failed_downstream": 51,
+    "dlq_pending": 51,
+    "dlq_replayed": 280,
+    "dlq_replay_failed": 0,
+    "dlq_total": 331,
+    "breaker_state": "closed",
+    "in_flight": 0.0
+  }
+}

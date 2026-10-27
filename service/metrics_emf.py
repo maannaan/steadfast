@@ -6,9 +6,10 @@ cloudwatch:PutMetricData permission and no metrics agent, and the per-call line 
 single source of truth (audit record and metric in one).
 
 Two kinds of line:
-- per call: Calls, Retries, DownstreamErrors, DLQEnqueued, LatencyMs, merged into the
-  existing "call" log event. Dimension [ServiceName] only: a TaskId dimension here would
-  create a new set of billed metrics for every task autoscaling ever starts.
+- per call: Calls, Retries, DownstreamErrors, DLQEnqueued, LatencyMs and TurnLatencyMs
+  (one value per pipeline turn), merged into the existing "call" log event. Dimension
+  [ServiceName] only: a TaskId dimension here would create a new set of billed metrics
+  for every task autoscaling ever starts.
 - every PUBLISH_INTERVAL_S: InFlightCalls and CircuitOpen, with [ServiceName] (what
   autoscaling tracks: Average across tasks = in-flight per task) and [ServiceName, TaskId]
   (the per-task view on the dashboard).
@@ -53,9 +54,19 @@ class EmfEmitter:
         }
 
     def call_fields(
-        self, *, retries: int, downstream_errors: int, dlq: bool, latency_ms: int
+        self,
+        *,
+        retries: int,
+        downstream_errors: int,
+        dlq: bool,
+        latency_ms: int,
+        turn_latency_ms: list[int] | None = None,
     ) -> dict[str, Any]:
-        """Fields to merge into the per-call log line."""
+        """Fields to merge into the per-call log line.
+
+        TurnLatencyMs is an array (EMF allows up to 100 values per metric), one value per
+        pipeline turn, so percentiles are over turns while the call stays one log line.
+        """
         units = {
             "Calls": "Count",
             "Retries": "Count",
@@ -63,7 +74,10 @@ class EmfEmitter:
             "DLQEnqueued": "Count",
             "LatencyMs": "Milliseconds",
         }
-        return {
+        turns = (turn_latency_ms or [])[:100]
+        if turns:
+            units["TurnLatencyMs"] = "Milliseconds"
+        fields: dict[str, Any] = {
             "_aws": self._block([["ServiceName"]], units),
             "ServiceName": self.service_name,
             "Calls": 1,
@@ -72,6 +86,9 @@ class EmfEmitter:
             "DLQEnqueued": int(dlq),
             "LatencyMs": latency_ms,
         }
+        if turns:
+            fields["TurnLatencyMs"] = turns
+        return fields
 
     def gauge_fields(self, *, in_flight: float, circuit_open: bool) -> dict[str, Any]:
         units = {"InFlightCalls": "Count", "CircuitOpen": "Count"}

@@ -1,6 +1,11 @@
 import asyncio
+import logging
 import random
+from datetime import UTC, datetime
 
+import pytest
+
+from service.calling_window import CallingWindow
 from service.metrics import Metrics
 from service.models import Outcome
 from service.replay import replay_dead_letters
@@ -96,6 +101,44 @@ async def test_replay_failure_bumps_replay_count(db: Database, clock: FakeClock)
         assert entry is not None
         assert entry.status == "replay_failed"
         assert entry.replay_count == expected
+
+
+async def test_replay_outside_calling_window_is_deferred(
+    db: Database, clock: FakeClock, caplog: pytest.LogCaptureFixture
+) -> None:
+    pipeline = FakePipeline([r503(), r503(), r503()], default=OK)
+    executor = build_executor(db, pipeline, clock)
+    await executor.handle_call(make_event("evt-1"))
+    dlq = SqliteDLQ(db)
+    window = CallingWindow.parse("08:00-19:00+05:30")
+    calls_before = len(pipeline.calls)
+
+    with caplog.at_level(logging.INFO, logger="steadfast.replay"):
+        summary = await replay_dead_letters(
+            executor,
+            dlq,
+            Metrics(),
+            replay_all=True,
+            window=window,
+            now=lambda: datetime(2026, 10, 27, 16, 0, tzinfo=UTC),  # 21:30 IST
+            sleep=clock.sleep,
+        )
+    entry = await dlq.get("evt-1")
+    assert summary.deferred == 1 and summary.replayed == 0
+    assert len(pipeline.calls) == calls_before  # nobody was dialled
+    assert entry is not None and entry.status == "pending" and entry.replay_count == 0
+    assert any(r.getMessage() == "replay_deferred" for r in caplog.records)
+
+    summary = await replay_dead_letters(
+        executor,
+        dlq,
+        Metrics(),
+        replay_all=True,
+        window=window,
+        now=lambda: datetime(2026, 10, 27, 6, 0, tzinfo=UTC),  # 11:30 IST
+        sleep=clock.sleep,
+    )
+    assert summary.replayed == 1 and summary.deferred == 0
 
 
 async def test_replay_is_rate_limited_and_reports_missing(db: Database, clock: FakeClock) -> None:

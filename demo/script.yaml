@@ -1,0 +1,123 @@
+# Storyboard for the 5-minute demo video. Every scene has a fixed slot in the final cut;
+# build_video.py speeds a longer clip up to fit it (and labels the speed), and fails if
+# the narration does not fit. Slots add up to 4:55, under the 5:00 limit.
+#
+# visual types:
+#   card    - a still: an image (docs/diagrams/*.png) with a title, rendered by Playwright
+#   term    - a terminal capture made by demo/record.py, replayed by demo/term.html
+#   console - a CloudWatch console capture made by demo/capture.py console
+#
+# record: the command demo/record.py runs for a term scene (from the repo root, after
+# eval "$(scripts/aws_env.sh)"). start_at: replay from the first line matching this regex.
+# {placeholders} in narration are filled from build_video.py --var name=value.
+
+voice:
+  model: model-weights/cpu/en_US-ljspeech-medium.onnx
+  length_scale: 0.92 # a little faster than Piper's default pace
+
+scenes:
+  - id: title
+    slot_s: 20
+    visual:
+      type: card
+      title: "Steadfast: zero unaccounted calls"
+      subtitle: "AI collections calls on AWS, open-weight models, every call accounted for"
+      image: docs/diagrams/aws-architecture.png
+    narration: >-
+      This is Steadfast, a call service for AI collections calls to borrowers of Indian
+      digital lenders. Its one rule: every call ends in the call log, or in the dead letter
+      queue, and no call is ever lost. Everything here runs on AWS, from one Terraform
+      stack, in the Asia Pacific region.
+
+  - id: smoke
+    slot_s: 30
+    visual: {type: term, capture: smoke}
+    record: scripts/aws_smoke.sh
+    narration: >-
+      First, the deployed stack. A request without the access key is refused at the load
+      balancer, before any task sees it. With the key, one call goes through the
+      orchestrator, is recorded in DynamoDB, and is read back, most likely by a different
+      task. Smoke test passes.
+
+  - id: load-dashboard
+    slot_s: 55
+    visual: {type: console, capture: load-dashboard}
+    narration: >-
+      Now a full morning campaign window, seven forty five to ten fifteen, replayed at six
+      times speed: twenty five real minutes, shown here much faster. The mock pipeline fails
+      one turn in five. Retries with jitter absorb most failures. As in-flight calls per
+      task pass twenty, target tracking scales the Fargate service out, and back in after
+      the peak.
+
+  - id: load-report
+    slot_s: 15
+    visual: {type: term, capture: load-window, start_at: "scenario"}
+    record: scripts/load_aws.sh
+    narration: >-
+      Then the load generator checks every call it sent against the service. Each one is a
+      result or a dead letter. Unaccounted: zero.
+
+  - id: dlq-replay
+    slot_s: 30
+    visual: {type: term, capture: dlq-replay}
+    record: scripts/replay_aws.sh
+    narration: >-
+      Calls that ran out of retries wait in an S Q S dead letter queue. The replay worker
+      drains it at a fixed rate, behind the same circuit breaker, and only inside permitted
+      calling hours. Replays are idempotent: a call replayed twice is still recorded once.
+
+  - id: outage
+    slot_s: 22
+    visual: {type: term, capture: outage, start_at: "DEGRADED"}
+    record: scripts/outage_aws.sh
+    narration: >-
+      A failure drill. The pipeline slows down past the attempt timeout. Turns retry, slow
+      calls are dead lettered instead of hanging, and the per-turn latency alarm fires.
+      Nothing is lost.
+
+  - id: az-drill
+    slot_s: 20
+    visual: {type: term, capture: az-drill, start_at: "stopping every"}
+    record: scripts/az_drill.sh
+    narration: >-
+      Next, every orchestrator task in one availability zone is stopped mid-load. Tasks
+      drain their calls, the other zone keeps serving, and the client sees no errors.
+
+  - id: bluegreen
+    slot_s: 30
+    visual: {type: term, capture: bluegreen}
+    record: scripts/bluegreen_demo.sh
+    narration: >-
+      Deploys are E C S native blue green. The new version answers test traffic on a header
+      first, bakes for two minutes, then takes production. A broken version never gets
+      production traffic: it fails readiness, and E C S rolls it back on its own.
+
+  - id: models
+    slot_s: 43
+    visual: {type: term, capture: models}
+    record: scripts/model_demo.sh
+    narration: >-
+      Then the open-weight models, on a C P U instance: faster whisper for speech to text,
+      Qwen two point five for the reply, and Piper for speech. The orchestrator talks to
+      them unchanged. With injected faults and a full queue, the model rejects work
+      explicitly and logs why, and the orchestrator retries or dead letters. Still zero
+      unaccounted. The voice you are hearing is that same Piper voice.
+
+  - id: teardown
+    slot_s: 18
+    visual: {type: term, capture: teardown, start_at: "teardown finished|PASS|FAIL"}
+    record: scripts/teardown.sh
+    narration: >-
+      At the end of every session the whole stack is destroyed, and a script asks AWS
+      directly whether anything tagged for the project is left. Pass.
+
+  - id: close
+    slot_s: 12
+    visual:
+      type: card
+      title: "Zero unaccounted calls"
+      subtitle: "This session cost {session_cost} on AWS. Code, results, runbook: github.com/maannaan/steadfast (Apache-2.0)"
+      image: docs/diagrams/call-flow.png
+    narration: >-
+      This whole session cost {session_cost_spoken}. The code, results and runbook are on
+      GitHub, under Apache two point oh.

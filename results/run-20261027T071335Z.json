@@ -1,0 +1,43 @@
+{
+  "label": "outage-slow",
+  "run_file": "run-20261027T071335Z.jsonl",
+  "config": {
+    "speed": 6.0,
+    "start": "09:00",
+    "duration_hours": 0.8,
+    "seed": 13
+  },
+  "real_duration_s": 508.4,
+  "sent": 2412,
+  "succeeded_first_try": 255,
+  "succeeded_after_retry": 679,
+  "failed_downstream": 1478,
+  "dlq_reasons": {
+    "retries_exhausted": 469,
+    "circuit_open": 1009
+  },
+  "dlq_count": 1478,
+  "dlq_rate_pct": 61.28,
+  "latency_ms": {
+    "p50": 18700.0,
+    "p95": 29254.0,
+    "p99": 34312.0
+  },
+  "breaker_transitions": null,
+  "breaker_opens": null,
+  "http_errors": 0,
+  "unaccounted": 0,
+  "unaccounted_sample": [],
+  "service_stats_after": {
+    "received": 9511,
+    "succeeded_first_try": 2288,
+    "succeeded_after_retry": 5694,
+    "failed_downstream": 1529,
+    "dlq_pending": 1529,
+    "dlq_replayed": 280,
+    "dlq_replay_failed": 0,
+    "dlq_total": 1809,
+    "breaker_state": "closed",
+    "in_flight": 0.0
+  }
+}

@@ -10,6 +10,8 @@ from typing import Literal
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from service.calling_window import CallingWindow
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", env_ignore_empty=True)
@@ -72,6 +74,11 @@ class Settings(BaseSettings):
     # `replay_concurrency` receive loops (each holds up to 10 calls in flight).
     replay_rate_per_s: float = Field(default=5.0, gt=0)
     replay_concurrency: int = Field(default=8, ge=1, le=32)
+    # Reported by /health; Terraform sets the image tag.
+    service_version: str = "dev"
+    # Hours in which replays may run, e.g. "08:00-19:00+05:30" (see calling_window.py).
+    # "off" locally, so the quick start can replay at any hour; Terraform sets the window.
+    replay_calling_window: str = "off"
 
     @model_validator(mode="after")
     def sqs_needs_queue_url(self) -> "Settings":
@@ -79,3 +86,12 @@ class Settings(BaseSettings):
         if self.dlq_backend == "sqs" and not self.sqs_queue_url:
             raise ValueError("DLQ_BACKEND=sqs requires SQS_QUEUE_URL")
         return self
+
+    @model_validator(mode="after")
+    def calling_window_parses(self) -> "Settings":
+        CallingWindow.parse(self.replay_calling_window)
+        return self
+
+    @property
+    def calling_window(self) -> CallingWindow | None:
+        return CallingWindow.parse(self.replay_calling_window)

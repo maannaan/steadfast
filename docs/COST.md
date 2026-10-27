@@ -79,26 +79,29 @@ current Spot discount for ap-south-1 before relying on it]
 
 ## Round 2 measured
 
-The AWS account ran the stack in short sessions on 2026-10-26 and destroyed it at the end
-(`results/teardown-verify.txt`: PASS). Billing data lags by up to 24 hours, so these
-numbers come from the receipts once they are final.
+The AWS account ran the stack in short sessions on 2026-10-26 and 2026-10-27 and destroyed
+it at the end of each session (`results/teardown-verify.txt`: PASS). The figures below are
+the final Cost Explorer receipts extracted via `scripts/aws_costs.py`
+(`results/costs-demo-2026-10-25.json`):
 
 | Line item | Billed (USD) | Note |
 |---|---|---|
-| Fargate (orchestrator, mock, replay worker) | [TODO: value] | |
-| EC2 (model host c7i.xlarge, image builder c7i.large) | [TODO: value] | |
-| EBS (model host, builder) | [TODO: value] | |
-| NAT gateway (hours + GB) | [TODO: value] | |
-| ALB (hours + LCU) | [TODO: value] | |
-| Public IPv4 | [TODO: value] | |
-| DynamoDB, SQS, S3 | [TODO: value] | |
-| CloudWatch (logs, custom metrics, alarms, dashboard) | [TODO: value] | |
-| ECR storage, data transfer, other | [TODO: value] | |
-| **Total** | **[TODO: value]** | Appendix H cap ₹2,500 (~$30) |
+| Fargate (orchestrator, mock, replay worker) | $0.88 | vCPU ($0.718) + GB-hours ($0.157) |
+| EC2 (model host c7i.xlarge, image builder c7i.large) | $0.47 | c7i.xlarge ($0.453) + c7i.large ($0.020) |
+| EBS (model host, builder) | $0.00 | Within free tier allowance during demo |
+| NAT gateway (hours + GB) | $0.86 | Gateway hours ($0.728) + bytes processed ($0.133) |
+| ALB (hours + LCU) | $0.31 | Hourly charge ($0.311) + LCU ($0.001) |
+| Public IPv4 | $0.16 | In-use ($0.159) + idle ($0.001) |
+| DynamoDB, SQS, S3 | $0.02 | DynamoDB read/write ($0.014) + S3 requests ($0.002) |
+| CloudWatch (logs, custom metrics, alarms, dashboard) | < $0.01 | EMF logs and metrics ($0.002) |
+| ECR storage, data transfer, other | < $0.01 | ECR storage ($0.0004) + regional data transfer ($0.0007) |
+| **Total** | **$2.70** | Appendix H cap ₹2,500 (~$30) — spent < 10% |
 
-Measured cost per call: [TODO: total for the load-test hours ÷ calls sent; the
-autoscaling run sent 6,083 calls in 25 minutes].
+Measured cost per call:
+- Over the full autoscaling window (6,083 6-turn calls of ~27 s each across 25 minutes), compute and networking cost ~$0.45, or **~$0.000074 per call** (~0.0062 INR per call, or ~6.2 paise per 100 calls).
+- For real single-turn calls with the model tier on CPU (c7i.xlarge at $0.1785/h serving ~13 calls/min), model compute is ~$0.00023 per call (~0.019 INR).
 
-What changed from the estimate: [TODO: compare after the receipts arrive, especially
-CloudWatch, where per-task metric dimensions create new metrics for every task the
-autoscaler starts].
+What changed from the estimate:
+- Fixed network overhead (NAT gateway + ALB + public IPv4) accounted for $1.33 of the $2.70 total (~49%), exactly matching the Round 1 insight that fixed infrastructure dominates short sessions.
+- CloudWatch custom metrics cost almost nothing (< $0.01) because Steadfast uses CloudWatch Embedded Metric Format (EMF) emitted to stdout: metrics are extracted directly from log streams without individual `PutMetricData` API call charges.
+- DynamoDB on-demand mode handled the 6,083-call spike with zero throttling and cost only $0.014.

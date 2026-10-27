@@ -219,10 +219,29 @@ variable "replay_concurrency" {
   default     = 8
 }
 
-variable "baseline_p99_ms" {
-  description = "Normal p99 call latency at the ALB. The latency alarm fires at 3x this. 30000 matches the measured ~29.5 s p99 of a 6-turn call; use ~1500 with turns_per_call = 1."
-  type        = number
-  default     = 30000
+variable "replay_calling_window" {
+  description = "Hours in which DLQ replays may dial borrowers (HH:MM-HH:MM+HH:MM), or \"off\". Outside it, replays are deferred and logged as replay_deferred. Set \"off\" only for a demo outside these hours."
+  type        = string
+  default     = "08:00-19:00+05:30"
+
+  validation {
+    condition     = var.replay_calling_window == "off" || can(regex("^\\d{2}:\\d{2}-\\d{2}:\\d{2}[+-]\\d{2}:\\d{2}$", var.replay_calling_window))
+    error_message = "replay_calling_window must look like 08:00-19:00+05:30, or be off."
+  }
+}
+
+variable "baseline_turn_p99_ms" {
+  description = "Normal p99 latency of one turn (TurnLatencyMs), per pipeline_target. The latency alarm fires at 3x the active target's value. mock: measured p99 1437 ms; model: ~6 s on the CPU tier."
+  type        = map(number)
+  default = {
+    mock  = 1450
+    model = 6000
+  }
+
+  validation {
+    condition     = alltrue([for t in ["mock", "model"] : contains(keys(var.baseline_turn_p99_ms), t)])
+    error_message = "baseline_turn_p99_ms needs a value for both mock and model."
+  }
 }
 
 variable "alert_email" {

@@ -24,12 +24,16 @@ locals {
       ]
     },
     {
-      title = "Response time at the ALB (s)"
+      # Per turn, with the alarm threshold drawn in. A whole call is several turns plus
+      # gaps by design (~27 s on the demo settings), so its time at the ALB says little.
+      title = "Turn latency (ms) vs latency alarm"
       metrics = [
-        concat(["AWS/ApplicationELB", "TargetResponseTime"], local.alb_dim, [{ stat = "p50", label = "p50" }]),
-        concat(["AWS/ApplicationELB", "TargetResponseTime"], local.alb_dim, [{ stat = "p90", label = "p90" }]),
-        concat(["AWS/ApplicationELB", "TargetResponseTime"], local.alb_dim, [{ stat = "p99", label = "p99" }]),
+        concat([local.metric_ns, "TurnLatencyMs"], local.orch_dim, [{ stat = "p50", label = "p50" }]),
+        concat([local.metric_ns, "TurnLatencyMs"], local.orch_dim, [{ stat = "p99", label = "p99" }]),
       ]
+      annotations = {
+        horizontal = [{ label = "alarm: 3x baseline p99", value = 3 * local.baseline_turn_p99_ms }]
+      }
     },
     {
       # EMF metrics are 1-minute resolution and each task publishes every 10 s, so a plain

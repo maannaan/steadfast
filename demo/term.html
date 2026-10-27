@@ -1,0 +1,101 @@
+<!doctype html>
+<!--
+  Replays a demo/record.py capture as a terminal, for Playwright to record as video.
+  demo/capture.py injects window.__CAPTURE__ ({cmd, lines: [{t, line}], exit}) and
+  window.__OPTS__ ({title, maxGap, startAt}) before the page loads; nothing is fetched.
+  Gaps between lines are shortened to maxGap seconds: a 25-minute run becomes a short clip
+  that build_video.py then fits to its slot. Sets window.__done when finished.
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; height: 100%; background: #0b0f14; }
+  .win { position: absolute; inset: 40px 60px 150px 60px; background: #11161d;
+         border: 1px solid #2a3340; border-radius: 12px; overflow: hidden;
+         box-shadow: 0 20px 60px rgba(0,0,0,.5); display: flex; flex-direction: column; }
+  .bar { height: 44px; background: #1a212b; display: flex; align-items: center; gap: 10px;
+         padding: 0 18px; font: 600 20px -apple-system, "Helvetica Neue", sans-serif; color: #9aa7b6; }
+  .dot { width: 14px; height: 14px; border-radius: 50%; }
+  .title { margin-left: 14px; }
+  .screen { flex: 1; padding: 18px 26px; overflow: hidden; display: flex; flex-direction: column;
+            justify-content: flex-start; font: 22px/1.38 Menlo, "SF Mono", monospace; color: #d7dde5;
+            white-space: pre-wrap; word-break: break-all; }
+  .prompt { color: #7ee787; }
+  .cmd { color: #ffffff; }
+  .skip { color: #6e7b8b; }
+  .pass { color: #7ee787; font-weight: 700; }
+  .fail { color: #ff7b72; font-weight: 700; }
+  .warn { color: #e3b341; }
+  .cursor { display: inline-block; width: 12px; height: 24px; background: #d7dde5;
+            vertical-align: text-bottom; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+</style>
+</head>
+<body>
+<div class="win">
+  <div class="bar">
+    <span class="dot" style="background:#ff5f57"></span>
+    <span class="dot" style="background:#febc2e"></span>
+    <span class="dot" style="background:#28c840"></span>
+    <span class="title" id="title"></span>
+  </div>
+  <div class="screen" id="screen"></div>
+</div>
+<script>
+  const cap = window.__CAPTURE__, opts = window.__OPTS__ || {};
+  const screen = document.getElementById("screen");
+  document.getElementById("title").textContent = opts.title || "steadfast";
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  function classify(text) {
+    if (/\b(PASS|SUCCESSFUL|ROLLBACK_SUCCESSFUL)\b/.test(text) && !/FAIL/.test(text)) return "pass";
+    if (/\bFAIL\b|ALARM\b|ROLLBACK_IN_PROGRESS|OUTAGE|DEGRADED/.test(text)) return "fail";
+    if (/UNACCOUNTED|unaccounted|http_errors|alarm/.test(text)) return "warn";
+    return "";
+  }
+
+  function add(text, cls) {
+    const div = document.createElement("div");
+    div.textContent = text === "" ? " " : text;
+    if (cls) div.className = cls;
+    screen.insertBefore(div, cursorLine);
+    // Scroll like a terminal: drop the oldest lines once the window is full.
+    while (screen.scrollHeight > screen.clientHeight && screen.children.length > 2)
+      screen.removeChild(screen.firstChild);
+    return div;
+  }
+
+  const cursorLine = document.createElement("div");
+  cursorLine.innerHTML = '<span class="cursor"></span>';
+  screen.appendChild(cursorLine);
+
+  async function run() {
+    await sleep(600);
+    const line = document.createElement("div");
+    line.innerHTML = '<span class="prompt">$ </span><span class="cmd"></span>';
+    screen.insertBefore(line, cursorLine);
+    const cmdSpan = line.querySelector(".cmd");
+    for (const ch of cap.cmd) { cmdSpan.textContent += ch; await sleep(28); }
+    await sleep(500);
+
+    let lines = cap.lines;
+    if (opts.startAt) {
+      const re = new RegExp(opts.startAt);
+      const i = lines.findIndex((l) => re.test(l.line));
+      if (i > 0) { add(`… ${i} lines, ${Math.round(lines[i].t)} s later …`, "skip"); lines = lines.slice(i); }
+    }
+    const maxGap = (opts.maxGap ?? 1.0) * 1000;
+    let prev = lines.length ? lines[0].t : 0;
+    for (const l of lines) {
+      await sleep(Math.min((l.t - prev) * 1000, maxGap));
+      prev = l.t;
+      add(l.line, classify(l.line));
+    }
+    await sleep(2000);
+    window.__done = true;
+  }
+  run();
+</script>
+</body>
+</html>
