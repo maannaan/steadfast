@@ -26,7 +26,7 @@ Predixion AI x TalentX Open-Weight Collections Agent Challenge, AWS FDE track.
       File generated: `demo/out/steadfast-demo.mp4` (Duration: <= 5:00, 1080p, open-weight
       Piper TTS narration, burned-in captions, Playwright terminal replays & CloudWatch
       console capture).
-      Video link: [TODO: Paste unlisted video link after upload]
+      Video link: https://youtu.be/T3inVZCFdRs
 - [x] Cost write-up revised with measured numbers: "Round 2 measured" in
       [docs/COST.md](docs/COST.md) populated with measured receipts from Cost Explorer
       (`results/costs-demo-2026-10-25.json`: **$2.70 total spent**, < 10% of budget cap).

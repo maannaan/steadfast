@@ -269,7 +269,7 @@ make aws-smoke       # 403 without the key, health, readiness, one call recorded
 terraform -chdir=infra output -raw dashboard_url
 ```
 
-**Demo** (what the recorded video shows):
+**Demo** (watch the [recorded video on YouTube](https://youtu.be/T3inVZCFdRs)):
 
 ```bash
 make aws-load-window       # 07:45-10:15 at speed 6 (25 min): tasks 2 -> 8 -> 2; exits 1 if any call is unaccounted
